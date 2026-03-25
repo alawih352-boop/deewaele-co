@@ -1378,7 +1378,7 @@ if [ "$ALT_HOST" != "$HOST" ]; then
   # use friendly region name for fragment (fallback to code if not known)
   friendly_region="$(get_region_name "$REGION")"
   # add "-alt" suffix when building alt fragments to indicate the short URL
-  friendly_region_alt="${friendly_region}"
+  friendly_region_alt="${friendly_region}-alt"
 
   if [ "$PROTO" = "vless" ]; then
     # Replace host in query params with ALT_HOST
