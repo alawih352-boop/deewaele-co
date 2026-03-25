@@ -22,7 +22,7 @@ Deploy Xray-core on Google Cloud Run with WebSocket + TLS.
 ### الطريقة 1: البرنامج التفاعلي (الأبسط)
 
 ```bash
-git clone https://github.com/deewaele-ux/deewaele-co.git
+git clone https://github.com/alawih352-boop/deewaele-co.git
 cd deewaele-co
 chmod +x install.sh
 ./install.sh
@@ -32,7 +32,7 @@ chmod +x install.sh
 #### مع Telegram Bot (اختياري)
 
 ```bash
-git clone https://github.com/deewaele-ux/deewaele-co.git
+git clone https://github.com/alawih352-boop/deewaele-co.git
 cd deewaele-co
 chmod +x install.sh
 

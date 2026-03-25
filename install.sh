@@ -209,7 +209,7 @@ generate_random_service_name() {
   for i in {1..4}; do
     name="${name}${chars:$((RANDOM % ${#chars})):1}"
   done
-  echo "${name}-ws"
+  echo "${name}sn"
 }
 
 apply_preset() {
@@ -396,42 +396,41 @@ CHAT_ID="${CHAT_ID:-}"
 
 # -------- Region Name Mapping for Telegram --------
 declare -A REGION_NAMES=(
-  [us-central1]="United States 🇺🇸 – Iowa"
-  [us-east1]="United States 🇺🇸 – South Carolina"
-  [us-east4]="United States 🇺🇸 – Northern Virginia"
-  [us-east5]="United States 🇺🇸 – Columbus, Ohio"
-  [us-west1]="United States 🇺🇸 – Oregon"
-  [us-west2]="United States 🇺🇸 – Los Angeles, California"
-  [us-west3]="United States 🇺🇸 – Salt Lake City, Utah"
-  [us-west4]="United States 🇺🇸 – Las Vegas, Nevada"
-  [us-south1]="United States 🇺🇸 – Dallas, Texas"
-  [northamerica-northeast1]="Canada 🇨🇦 – Montreal"
-  [northamerica-northeast2]="Canada 🇨🇦 – Toronto"
-  [southamerica-east1]="Brazil 🇧🇷 – São Paulo"
-  [europe-north1]="Finland 🇫🇮 – Hamina"
-  [europe-north2]="Denmark 🇩🇰"
-  [europe-central2]="Poland 🇵🇱 – Warsaw"
-  [europe-southwest1]="Spain 🇪🇸 – Madrid"
-  [europe-west1]="Belgium 🇧🇪 – St. Ghislain"
-  [europe-west2]="United Kingdom 🇬🇧 – London"
-  [europe-west3]="France 🇫🇷"
-  [europe-west4]="Netherlands 🇳🇱"
-  [europe-west6]="Switzerland 🇨🇭 – Zurich"
-  [europe-west8]="Italy 🇮🇹 – Milan"
-  [europe-west9]="France 🇫🇷 – Paris"
-  [europe-west10]="Germany 🇩🇪 – Berlin"
-  [europe-west12]="Austria 🇦🇹 – Vienna"
-  
-  [asia-east1]="Taiwan 🇹🇼"
-  [asia-east2]="Hong Kong 🇭🇰"
-  [asia-northeast1]="Japan 🇯🇵 – Tokyo"
-  [asia-northeast2]="Japan 🇯🇵 – Osaka"
-  [asia-northeast3]="South Korea 🇰🇷 – Seoul"
-  [asia-southeast1]="Singapore 🇸🇬"
-  [asia-south1]="India 🇮🇳 – Mumbai"
-  [australia-southeast1]="Australia 🇦🇺 – Sydney"
-  [africa-south1]="South Africa 🇿🇦 – Johannesburg"
-  [me-west1]="Israel 🇮🇱 – Tel Aviv"
+  [us-central1]="US🇺🇸Io"
+  [us-east1]="US🇺🇸_SC"
+  [us-east4]="US🇺🇸_NV"
+  [us-east5]="US🇺🇸_Oh"
+  [us-west1]="US🇺🇸_Or"
+  [us-west2]="US🇺🇸_Ca"
+  [us-west3]="US🇺🇸_Ut"
+  [us-west4]="US🇺🇸_Ne"
+  [us-south1]="US🇺🇸_Te"
+  [northamerica-northeast1]="Canada🇨🇦_Montreal"
+  [northamerica-northeast2]="Canada🇨🇦_Toronto"
+  [southamerica-east1]="Brazil🇧🇷"
+  [europe-north1]="Finland🇫🇮"
+  [europe-north2]="Denmark🇩🇰"   
+  [europe-central2]="Poland🇵🇱"
+  [europe-southwest1]="Spain🇪🇸"
+  [europe-west1]="Belgium🇧🇪"
+  [europe-west2]="United_Kingdom🇬🇧"
+  [europe-west3]="Germany🇩🇪_Frankfurt"    
+  [europe-west4]="Netherlands🇳🇱" 
+  [europe-west6]="Switzerland🇨🇭"
+  [europe-west8]="Italy🇮🇹"
+  [europe-west9]="France🇫🇷"
+  [europe-west10]="Germany🇩🇪_Berlin"
+  [europe-west12]="Austria🇦🇹"
+  [asia-east1]="Taiwan🇹🇼" 
+  [asia-east2]="Hong_Kong🇭🇰"
+  [asia-northeast1]="Japan🇯🇵_Tokyo"
+  [asia-northeast2]="Japan🇯🇵_Osaka"
+  [asia-northeast3]="South_Korea🇰🇷"
+  [asia-southeast1]="Singapore🇸🇬"
+  [asia-south1]="India🇮🇳"
+  [australia-southeast1]="Australia🇦🇺"
+  [africa-south1]="South_Africa🇿🇦"
+  [me-west1]="Israel🇮🇱"
 )
 get_region_name() {
   local region_code=$1
@@ -1379,19 +1378,19 @@ if [ "$ALT_HOST" != "$HOST" ]; then
   # use friendly region name for fragment (fallback to code if not known)
   friendly_region="$(get_region_name "$REGION")"
   # add "-alt" suffix when building alt fragments to indicate the short URL
-  friendly_region_alt="${friendly_region}-alt"
+  friendly_region_alt="${friendly_region}"
 
   if [ "$PROTO" = "vless" ]; then
     # Replace host in query params with ALT_HOST
     ALT_VLESS_QUERY=$(echo "$QUERY_PARAMS" | sed "s/&host=${HOST}/&host=${ALT_HOST}/")
-    ALT_LINK="vless://${UUID}@${ALT_HOST}:443?${ALT_VLESS_QUERY}#(${friendly_region_alt})"
+    ALT_LINK="vless://${UUID}@${ALT_HOST}:443?${ALT_VLESS_QUERY}#${friendly_region_alt}"
   elif [ "$PROTO" = "vmess" ]; then
     ALT_VMESS_JSON=$(echo "$VMESS_JSON" | sed "s|\"add\": \"$HOST\"|\"add\": \"$ALT_HOST\"|")
     ALT_LINK="vmess://$(echo "$ALT_VMESS_JSON" | base64 -w 0)"
   elif [ "$PROTO" = "trojan" ]; then
     # Replace host in query params with ALT_HOST
     ALT_TROJAN_QUERY=$(echo "$QUERY_PARAMS" | sed "s/&host=${HOST}/&host=${ALT_HOST}/")
-    ALT_LINK="trojan://${UUID}@${ALT_HOST}:443?${ALT_TROJAN_QUERY}#(${friendly_region_alt})"
+    ALT_LINK="trojan://${UUID}@${ALT_HOST}:443?${ALT_TROJAN_QUERY}#${friendly_region_alt}"
   fi
   
   echo ""
