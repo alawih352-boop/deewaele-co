@@ -1,6 +1,38 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# ========== COLOR CODES & FORMATTING (EARLY DEFINITION) ==========
+# Primary Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BRIGHT_RED='\033[0;91m'
+BRIGHT_GREEN='\033[0;92m'
+BRIGHT_YELLOW='\033[0;93m'
+BRIGHT_CYAN='\033[0;96m'
+BRIGHT_WHITE='\033[0;97m'
+BOLD='\033[1m'
+DIM='\033[2m'
+NC='\033[0m' # No Color
+
+# ========== BASIC UTILITY FUNCTIONS (EARLY DEFINITION) ==========
+print_error() {
+  echo -e "${BRIGHT_RED}${BOLD}✗${NC} ${RED}$1${NC}"
+}
+
+print_warning() {
+  echo -e "${BRIGHT_YELLOW}${BOLD}⚠${NC} ${YELLOW}$1${NC}"
+}
+
+print_success() {
+  echo -e "${BRIGHT_GREEN}${BOLD}✓${NC} ${GREEN}$1${NC}"
+}
+
+print_info() {
+  echo -e "${BRIGHT_CYAN}${BOLD}ℹ${NC} ${CYAN}$1${NC}"
+}
+
 # ========== GLOBAL VARIABLES FOR ERROR HANDLING ==========
 CURRENT_SERVICE=""
 ATTEMPT_NUMBER=${ATTEMPT_NUMBER:-1}
@@ -88,31 +120,15 @@ if [ -f "$RETRY_STATE_FILE" ]; then
   source "$RETRY_STATE_FILE"
 fi
 
-# ========== COLOR CODES & FORMATTING ==========
-# Primary Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
+# ========== ADDITIONAL COLOR CODES & FORMATTING ==========
+# Additional colors not defined earlier
 BLUE='\033[0;34m'
-CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
 WHITE='\033[1;37m'
 GRAY='\033[0;37m'
-
-# Bright/Light Colors
-BRIGHT_RED='\033[0;91m'
-BRIGHT_GREEN='\033[0;92m'
-BRIGHT_YELLOW='\033[0;93m'
-BRIGHT_BLUE='\033[0;94m'
-BRIGHT_CYAN='\033[0;96m'
-BRIGHT_MAGENTA='\033[0;95m'
-BRIGHT_WHITE='\033[0;97m'
-
-# Text Formatting
-BOLD='\033[1m'
 UNDERLINE='\033[4m'
-DIM='\033[2m'
-NC='\033[0m' # No Color
+BRIGHT_BLUE='\033[0;94m'
+BRIGHT_MAGENTA='\033[0;95m'
 
 # Background Colors
 BG_RED='\033[41m'
@@ -146,26 +162,6 @@ print_section() {
   echo -e "\n${BRIGHT_BLUE}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo -e "${BRIGHT_BLUE}${BOLD}▶${NC} ${BRIGHT_WHITE}${BOLD}${title}${NC}"
   echo -e "${BRIGHT_BLUE}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-}
-
-print_success() {
-  echo -e "${BRIGHT_GREEN}${BOLD}✓${NC} ${GREEN}$1${NC}"
-}
-
-print_error() {
-  echo -e "${BRIGHT_RED}${BOLD}✗${NC} ${RED}$1${NC}"
-}
-
-print_info() {
-  echo -e "${BRIGHT_CYAN}${BOLD}ℹ${NC} ${CYAN}$1${NC}"
-}
-
-print_warning() {
-  echo -e "${BRIGHT_YELLOW}${BOLD}⚠${NC} ${YELLOW}$1${NC}"
-}
-
-print_highlight() {
-  echo -e "${BOLD}${BRIGHT_MAGENTA}$1${NC}"
 }
 
 separator() {
@@ -1244,8 +1240,8 @@ if [ "${INTERACTIVE}" = true ] && [ -z "${REGION:-}" ]; then
   done
   
   REGION="$SELECTED_REGION"
-  # set custom identifier to region name
-  CUSTOM_ID="$REGION"
+  # set custom identifier to region name with country flag
+  CUSTOM_ID="$(get_region_name "$REGION")"
 fi
 REGION="${REGION:-us-central1}"
 print_success "Selected region: $REGION"
@@ -1510,39 +1506,12 @@ elif [ "$PROTO" = "trojan" ]; then
 fi
 
 # -------- Generate Alternative URL (short URL) --------
-# Try to get the short URL from gcloud (if available)
-ALT_HOST=$(gcloud run services describe "$SERVICE" --region "$REGION" --format="value(status.url)" 2>/dev/null | sed 's|https://||' | sed 's|/||g' || echo "")
-
-if [ -z "$ALT_HOST" ]; then
-  ALT_HOST="$HOST"  # fallback to primary if short URL not available
-fi
-
-# Generate alternative link with short URL only if different from primary
-if [ "$ALT_HOST" != "$HOST" ]; then
-  # use friendly region name for fragment (fallback to code if not known)
-  friendly_region="$(get_region_name "$REGION")"
-  # add "-alt" suffix when building alt fragments to indicate the short URL
-  friendly_region_alt="${friendly_region}_YT"
-
-  if [ "$PROTO" = "vless" ] || [ "$PROTO" = "trojan" ]; then
-      alt_query=$(echo "$QUERY_PARAMS" | sed 's/&host=[^&]*//g')
-      alt_query="${alt_query}&host=${HOST}"
-      ALT_LINK="$(build_protocol_link "$PROTO" "$ALT_HOST" "443" "$alt_query" "${friendly_region_alt}")"
-    elif [ "$PROTO" = "vmess" ]; then
-      # For VMESS, rebuild with ALT_HOST
-      vmess_for_alt=$(echo "$VMESS_JSON" | sed "s|\"add\": \"$HOST\"|\"add\": \"$ALT_HOST\"|")
-      ALT_LINK="vmess://$(echo "$vmess_for_alt" | base64 -w 0)"
-    fi
-  
-  echo ""
-  echo -e "${BOLD}${WHITE}Alternative Link (Short URL):${NC}"
-  echo "$ALT_LINK"
-else
-  ALT_LINK="$SHARE_LINK"
-fi
+# Removed - we only use the primary Cloud Run URL for simplicity
+# ALT_HOST is not needed anymore
 
 echo ""
-echo -e "${CYAN}${BOLD}╚════════════════════════════════════════════════╝${NC}"
+echo -e "${BOLD}${WHITE}Primary Link (Cloud Run):${NC}"
+echo "$SHARE_LINK"
 
 # -------- Generate Data URIs --------
 echo ""
@@ -1649,9 +1618,8 @@ echo ""
 # -------- Send to Telegram --------
 if [ -n "${BOT_TOKEN}" ] && [ -n "${CHAT_ID}" ]; then
   print_section "Sending to Telegram"
-  # Send primary link (primary URL in HOST)
-  #send_telegram "<b>🔗 PRIMARY (HOST):</b><pre>${SHARE_LINK}</pre>" 
-  send_telegram "<b>🔗 PRIMARY (HOST):</b><pre>${ALT_LINK}</pre>"
+  # Send the link to Telegram (single link only)
+  send_telegram "<b>🔗 XRAY Configuration Link:</b><pre>${SHARE_LINK}</pre>"
   print_success "Configuration sent to Telegram"
 fi
 
