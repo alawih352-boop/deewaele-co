@@ -1,6 +1,74 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# ========== GLOBAL VARIABLES FOR ERROR HANDLING ==========
+CURRENT_SERVICE=""
+ATTEMPT_NUMBER=1
+MAX_ATTEMPTS=3
+RETRY_STATE_FILE="/tmp/xray_deploy_retry_state_$$_.txt"
+
+# ========== ERROR HANDLING & CLEANUP ==========
+cleanup_on_error() {
+  local error_line=$1
+  local error_code=$2
+  
+  print_error "Script failed at line $error_line with exit code $error_code"
+  
+  if [ -n "$CURRENT_SERVICE" ]; then
+    print_warning "Attempting to clean up failed service: $CURRENT_SERVICE"
+    
+    if command -v gcloud >/dev/null 2>&1; then
+      # Delete the failed Cloud Run service
+      if gcloud run services delete "$CURRENT_SERVICE" --region "${REGION:-us-central1}" --quiet 2>/dev/null; then
+        print_success "Successfully deleted failed service: $CURRENT_SERVICE"
+      else
+        print_warning "Could not delete service (it may not exist yet or already deleted)"
+      fi
+    fi
+  fi
+  
+  # Check if we should retry
+  if [ $ATTEMPT_NUMBER -lt $MAX_ATTEMPTS ]; then
+    ATTEMPT_NUMBER=$((ATTEMPT_NUMBER + 1))
+    
+    # Save current state for the retry
+    cat > "$RETRY_STATE_FILE" <<EOF
+ATTEMPT_NUMBER=$ATTEMPT_NUMBER
+REGION=${REGION:-}
+PROJECT=${PROJECT:-}
+PROJECT_NUMBER=${PROJECT_NUMBER:-}
+PROTO=${PROTO:-}
+EOF
+    
+    print_info "Retrying deployment (Attempt $ATTEMPT_NUMBER of $MAX_ATTEMPTS)..."
+    echo ""
+    sleep 2
+    
+    # Source the retry state before restarting
+    if [ -f "$RETRY_STATE_FILE" ]; then
+      source "$RETRY_STATE_FILE"
+    fi
+    
+    exec "$0" "$@"  # Restart the script from the beginning
+  else
+    print_error "Max attempts ($MAX_ATTEMPTS) reached. Giving up."
+    
+    # Clean up the retry state file
+    rm -f "$RETRY_STATE_FILE"
+    
+    exit 1
+  fi
+}
+
+# Trap errors and call cleanup function
+trap 'cleanup_on_error ${LINENO} $?' ERR
+
+# Load previous attempt state if available
+if [ -f "$RETRY_STATE_FILE" ]; then
+  print_info "Loading state from previous attempt..."
+  source "$RETRY_STATE_FILE"
+fi
+
 # ========== COLOR CODES & FORMATTING ==========
 # Primary Colors
 RED='\033[0;31m'
@@ -171,6 +239,25 @@ enable_required_apis
 # Print formatted header (after APIs are enabled)
 print_header
 
+# Show retry information if this is not the first attempt
+if [ $ATTEMPT_NUMBER -gt 1 ]; then
+  print_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  print_warning "This is retry attempt $ATTEMPT_NUMBER of $MAX_ATTEMPTS"
+  print_warning "Previous attempt's failed service was cleaned up"
+  print_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+else
+  # Show auto-retry info on first attempt
+  echo ""
+  print_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  print_info "🔄 Auto-Restart Feature Enabled:"
+  print_info "   • Max attempts: $MAX_ATTEMPTS"
+  print_info "   • Failed deployments are automatically cleaned up"
+  print_info "   • Fresh service name generated on each attempt"
+  print_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+fi
+
 # -------- Store Session Start Time (from last system reboot) --------
 # Extract the last reboot time to track when the system was last started
 SESSION_START_TIME=""
@@ -202,7 +289,8 @@ declare -A PRESETS=(
   [vmess-ws]="proto=vmess|path=/|sni=yt3.ggpht.com|alpn=default|memory=2048|cpu=1|instances=16|concurrency=1000|timeout=1800"
 )
 
-# Generate random 4-character lowercase service name
+# -------- Cloud Run Service Name --------
+# Generate random service name  - NEW ONE EACH TIME to avoid conflicts
 generate_random_service_name() {
   local chars="abcdefghijklmnopqrstuvwxyz"
   local name=""
@@ -210,6 +298,13 @@ generate_random_service_name() {
     name="${name}${chars:$((RANDOM % ${#chars})):1}"
   done
   echo "${name}sn"
+}
+
+# Add timestamp to service name for uniqueness
+generate_unique_service_name() {
+  local random_part=$(generate_random_service_name)
+  local timestamp=$(date +%s%N | tail -c 6)  # Last 6 digits of nanoseconds
+  echo "${random_part}-${timestamp}"
 }
 
 apply_preset() {
@@ -342,7 +437,7 @@ show_more_regions() {
 }
 
 # -------- Preset Selection --------
-if [ "${INTERACTIVE}" = true ] && [ -z "${PRESET:-}" ]; then
+if [ "${INTERACTIVE}" = true ] && [ -z "${PRESET:-}" ] && [ $ATTEMPT_NUMBER -eq 1 ]; then
   print_section "Quick Start with Presets"
   echo ""
   echo -e "  ${BOLD}${BRIGHT_GREEN}1${NC} ${BRIGHT_GREEN}production${NC}       ${DIM}2048MB RAM, 1 CPU, 16 instances (High Performance)${NC}"
@@ -690,17 +785,29 @@ WSPATH="${WSPATH:-${PRESET_WSPATH:-/ws}}"
 CUSTOM_HOST=""
 
 # -------- Service Name --------
-if [ "${INTERACTIVE}" = true ] && [ -z "${SERVICE:-}" ]; then
-  # Use preset service if available, otherwise ask
+# Always generate a new unique service name on each attempt (to avoid conflicts if previous failed)
+if [ -z "${SERVICE:-}" ]; then
   if [ -z "${PRESET_SERVICE:-}" ]; then
-    read -rp "$(echo -e "${BOLD}🪪 Cloud Run Service Name${NC} (default: xray-ws): ")
- " SERVICE
+    # Generate unique service name automatically
+    NEW_SERVICE="$(generate_unique_service_name)"
+    SERVICE="$NEW_SERVICE"
+    print_success "Auto-generated service name: ${SERVICE}"
   else
-    SERVICE="${PRESET_SERVICE}"
-    print_info "Cloud Run Service Name (from preset): $SERVICE"
+    # Use preset service with timestamp for uniqueness
+    NEW_SERVICE="${PRESET_SERVICE}-$(date +%s%N | tail -c 6)"
+    SERVICE="$NEW_SERVICE"
+    print_success "Generated service name from preset: ${SERVICE}"
+  fi
+else
+  # If SERVICE was already provided, keep it but warn about retry behavior
+  if [ $ATTEMPT_NUMBER -gt 1 ]; then
+    NEW_SERVICE="${SERVICE}-retry${ATTEMPT_NUMBER}"
+    SERVICE="$NEW_SERVICE"
+    print_warning "Retry attempt $ATTEMPT_NUMBER - using modified service name: ${SERVICE}"
   fi
 fi
-SERVICE="${SERVICE:-${PRESET_SERVICE:-xray-ws}}"
+
+CURRENT_SERVICE="$SERVICE"  # Store for cleanup if error occurs
 
 # Validate service name format
 if ! [[ "$SERVICE" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; then
@@ -1218,8 +1325,21 @@ DEPLOY_ARGS=(
 DEPLOY_ARGS+=("--set-env-vars" "PROTO=${PROTO},USER_ID=${UUID},WS_PATH=${WSPATH},NETWORK=${NETWORK},SPEED_LIMIT=${SPEED_LIMIT},HOST=${SERVICE}-${PROJECT_NUMBER}.${REGION}.run.app")
 DEPLOY_ARGS+=("--quiet")
 
-# -------- Get URL --------
-gcloud run deploy "$SERVICE" "${DEPLOY_ARGS[@]}"
+# -------- Deploy to Cloud Run with Error Handling --------
+print_info "Deploying service: ${BRIGHT_CYAN}${SERVICE}${NC}"
+print_info "Attempt: ${BRIGHT_YELLOW}$ATTEMPT_NUMBER${NC} of ${BRIGHT_YELLOW}$MAX_ATTEMPTS${NC}"
+echo ""
+
+if ! gcloud run deploy "$SERVICE" "${DEPLOY_ARGS[@]}"; then
+  print_error "Deployment failed for service: $SERVICE"
+  print_warning "Cleaning up failed resources..."
+  
+  # Cleanup will be triggered by the trap, which will retry
+  # For now, just ensure the error is propagated
+  exit 1
+fi
+
+print_success "Service deployed successfully: ${BOLD}${SERVICE}${NC}"
 
 # -------- Get URL and Host --------
 
@@ -1378,7 +1498,7 @@ if [ "$ALT_HOST" != "$HOST" ]; then
   # use friendly region name for fragment (fallback to code if not known)
   friendly_region="$(get_region_name "$REGION")"
   # add "-alt" suffix when building alt fragments to indicate the short URL
-  friendly_region_alt="${friendly_region}-alt"
+  friendly_region_alt="${friendly_region}_YT"
 
   if [ "$PROTO" = "vless" ]; then
     # Replace host in query params with ALT_HOST
@@ -1509,8 +1629,8 @@ echo ""
 if [ -n "${BOT_TOKEN}" ] && [ -n "${CHAT_ID}" ]; then
   print_section "Sending to Telegram"
   # Send primary link (primary URL in HOST)
-  send_telegram "<b>🔗 PRIMARY (HOST):</b><pre>${SHARE_LINK}</pre>" 
-  #send_telegram "<b>🔗 PRIMARY (HOST):</b><pre>${ALT_LINK}</pre>"
+  #send_telegram "<b>🔗 PRIMARY (HOST):</b><pre>${SHARE_LINK}</pre>" 
+  send_telegram "<b>🔗 PRIMARY (HOST):</b><pre>${ALT_LINK}</pre>"
   print_success "Configuration sent to Telegram"
 fi
 
