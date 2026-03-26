@@ -3,9 +3,9 @@ set -euo pipefail
 
 # ========== GLOBAL VARIABLES FOR ERROR HANDLING ==========
 CURRENT_SERVICE=""
-ATTEMPT_NUMBER=1
+ATTEMPT_NUMBER=${ATTEMPT_NUMBER:-1}
 MAX_ATTEMPTS=3
-RETRY_STATE_FILE="/tmp/xray_deploy_retry_state_$$_.txt"
+RETRY_STATE_FILE="/tmp/xray_deploy_retry_state_$$.txt"
 
 # ========== ERROR HANDLING & CLEANUP ==========
 cleanup_on_error() {
@@ -31,27 +31,46 @@ cleanup_on_error() {
   if [ $ATTEMPT_NUMBER -lt $MAX_ATTEMPTS ]; then
     ATTEMPT_NUMBER=$((ATTEMPT_NUMBER + 1))
     
-    # Save current state for the retry
+    # Save current state for the retry (preserve important variables)
     cat > "$RETRY_STATE_FILE" <<EOF
-ATTEMPT_NUMBER=$ATTEMPT_NUMBER
-REGION=${REGION:-}
-PROJECT=${PROJECT:-}
-PROJECT_NUMBER=${PROJECT_NUMBER:-}
-PROTO=${PROTO:-}
+export ATTEMPT_NUMBER=$ATTEMPT_NUMBER
+export REGION='${REGION:-}'
+export PROJECT='${PROJECT:-}'
+export PROJECT_NUMBER='${PROJECT_NUMBER:-}'
+export PROTO='${PROTO:-}'
+export PRESET_MODE='${PRESET_MODE:-}'
+export PRESET_SERVICE='${PRESET_SERVICE:-}'
+export PRESET_PROTO='${PRESET_PROTO:-}'
+export PRESET_WSPATH='${PRESET_WSPATH:-}'
+export PRESET_SNI='${PRESET_SNI:-}'
+export PRESET_ALPN='${PRESET_ALPN:-}'
+export BOT_TOKEN='${BOT_TOKEN:-}'
+export CHAT_ID='${CHAT_ID:-}'
+export WSPATH='${WSPATH:-}'
+export NETWORK='${NETWORK:-}'
+export NETWORK_DISPLAY='${NETWORK_DISPLAY:-}'
+export UUID='${UUID:-}'
+export MEMORY='${MEMORY:-}'
+export CPU='${CPU:-}'
+export TIMEOUT='${TIMEOUT:-}'
+export MAX_INSTANCES='${MAX_INSTANCES:-}'
+export CONCURRENCY='${CONCURRENCY:-}'
+export SPEED_LIMIT='${SPEED_LIMIT:-0}'
+export INTERACTIVE='${INTERACTIVE:-}'
 EOF
     
+    print_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     print_info "Retrying deployment (Attempt $ATTEMPT_NUMBER of $MAX_ATTEMPTS)..."
+    print_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
     sleep 2
     
-    # Source the retry state before restarting
-    if [ -f "$RETRY_STATE_FILE" ]; then
-      source "$RETRY_STATE_FILE"
-    fi
-    
-    exec "$0" "$@"  # Restart the script from the beginning
+    # Restart the script with the saved state
+    exec bash -c "source '$RETRY_STATE_FILE' && exec '$0'"
   else
+    print_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     print_error "Max attempts ($MAX_ATTEMPTS) reached. Giving up."
+    print_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     
     # Clean up the retry state file
     rm -f "$RETRY_STATE_FILE"
@@ -1330,12 +1349,17 @@ print_info "Deploying service: ${BRIGHT_CYAN}${SERVICE}${NC}"
 print_info "Attempt: ${BRIGHT_YELLOW}$ATTEMPT_NUMBER${NC} of ${BRIGHT_YELLOW}$MAX_ATTEMPTS${NC}"
 echo ""
 
-if ! gcloud run deploy "$SERVICE" "${DEPLOY_ARGS[@]}"; then
-  print_error "Deployment failed for service: $SERVICE"
-  print_warning "Cleaning up failed resources..."
+# Temporarily disable 'set -e' to catch deployment errors properly
+set +e
+DEPLOY_ERROR=0
+gcloud run deploy "$SERVICE" "${DEPLOY_ARGS[@]}" || DEPLOY_ERROR=$?
+set -e
+
+if [ $DEPLOY_ERROR -ne 0 ]; then
+  print_error "Deployment failed for service: $SERVICE (exit code: $DEPLOY_ERROR)"
+  print_warning "Attempting cleanup and retry..."
   
-  # Cleanup will be triggered by the trap, which will retry
-  # For now, just ensure the error is propagated
+  # Trigger cleanup and retry via trap
   exit 1
 fi
 
