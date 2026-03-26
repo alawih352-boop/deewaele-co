@@ -811,9 +811,9 @@ if [ -z "${SERVICE:-}" ]; then
     SERVICE="$NEW_SERVICE"
     print_success "Auto-generated service name: ${SERVICE}"
   else
-    # Use preset service with timestamp for uniqueness
-    NEW_SERVICE="${PRESET_SERVICE}-$(date +%s%N | tail -c 6)"
-    SERVICE="$NEW_SERVICE"
+    # Use preset service consistently without numeric tail
+    # We keep just the preset random base value to avoid ugly IDs in the host.
+    SERVICE="${PRESET_SERVICE}"
     print_success "Generated service name from preset: ${SERVICE}"
   fi
 else
