@@ -1524,18 +1524,15 @@ if [ "$ALT_HOST" != "$HOST" ]; then
   # add "-alt" suffix when building alt fragments to indicate the short URL
   friendly_region_alt="${friendly_region}_YT"
 
-  if [ "$PROTO" = "vless" ]; then
-    # Replace host in query params with ALT_HOST
-    ALT_VLESS_QUERY=$(echo "$QUERY_PARAMS" | sed "s/&host=${HOST}/&host=${ALT_HOST}/")
-    ALT_LINK="vless://${UUID}@${ALT_HOST}:443?${ALT_VLESS_QUERY}#${friendly_region_alt}"
-  elif [ "$PROTO" = "vmess" ]; then
-    ALT_VMESS_JSON=$(echo "$VMESS_JSON" | sed "s|\"add\": \"$HOST\"|\"add\": \"$ALT_HOST\"|")
-    ALT_LINK="vmess://$(echo "$ALT_VMESS_JSON" | base64 -w 0)"
-  elif [ "$PROTO" = "trojan" ]; then
-    # Replace host in query params with ALT_HOST
-    ALT_TROJAN_QUERY=$(echo "$QUERY_PARAMS" | sed "s/&host=${HOST}/&host=${ALT_HOST}/")
-    ALT_LINK="trojan://${UUID}@${ALT_HOST}:443?${ALT_TROJAN_QUERY}#${friendly_region_alt}"
-  fi
+  if [ "$PROTO" = "vless" ] || [ "$PROTO" = "trojan" ]; then
+      alt_query=$(echo "$QUERY_PARAMS" | sed 's/&host=[^&]*//g')
+      alt_query="${alt_query}&host=${HOST}"
+      ALT_LINK="$(build_protocol_link "$PROTO" "$ALT_HOST" "443" "$alt_query" "${friendly_region_alt}")"
+    elif [ "$PROTO" = "vmess" ]; then
+      # For VMESS, rebuild with ALT_HOST
+      vmess_for_alt=$(echo "$VMESS_JSON" | sed "s|\"add\": \"$HOST\"|\"add\": \"$ALT_HOST\"|")
+      ALT_LINK="vmess://$(echo "$vmess_for_alt" | base64 -w 0)"
+    fi
   
   echo ""
   echo -e "${BOLD}${WHITE}Alternative Link (Short URL):${NC}"
