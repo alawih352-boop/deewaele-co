@@ -315,12 +315,15 @@ generate_random_service_name() {
   echo "${name}sn"
 }
 
-# Add timestamp to service name for uniqueness
+# Add deterministic random service name (avoid ugly numeric suffix like 19098)
 generate_unique_service_name() {
   local random_part=$(generate_random_service_name)
-  local timestamp=$(date +%s%N | tail -c 6)  # Last 6 digits of nanoseconds
-  echo "${random_part}-${timestamp}"
+  # Keep it short and clean, with no numeric suffix in service name
+  echo "${random_part}"
 }
+
+# Optionally add a short numeric suffix only in displayed link fragment or logs (for debug)
+# but not in the Cloud Run service name itself.
 
 apply_preset() {
   local preset=$1
