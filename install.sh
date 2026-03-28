@@ -1123,124 +1123,135 @@ print_section "Select Cloud Run Region"
 
 if [ "${INTERACTIVE}" = true ] && [ -z "${REGION:-}" ]; then
   SELECTED_REGION=""
-  while [ -z "${SELECTED_REGION}" ]; do
-    i=0  # Reset counter at start of each loop iteration
+  
+  # Auto-select if only one region is available
+  if [ ${#FILTERED_SUGGESTED[@]} -eq 1 ]; then
+    SELECTED_REGION="${FILTERED_SUGGESTED[0]}"
+    region_name="$(get_region_name "$SELECTED_REGION")"
     echo ""
-    
-    # Show available suggested regions only
-    if [ ${#FILTERED_SUGGESTED[@]} -gt 0 ]; then
-      echo -e "${BOLD}🌍 Available Suggested Regions:${NC}"
-      echo ""
-      i=1
-      for r in "${FILTERED_SUGGESTED[@]}"; do
-        region_name="$(get_region_name "$r")"
-        printf "  ${BOLD}%2d${NC} ${GREEN}✓${NC} %s (%s)\n" "$i" "$r" "$region_name"
-        ((i++))
-      done
-      echo ""
-    else
-      echo -e "${YELLOW}⚠ No suggested regions available${NC}"
-      echo ""
-    fi
-    
-    # Show "more regions" option
-    next_idx=$((i))
-    printf "  ${BOLD}%2d${NC} ${CYAN}📋 Show more regions${NC}\n" "$next_idx"
+    echo -e "${GREEN}✓ Auto-selected region: ${BOLD}$SELECTED_REGION${NC} ($region_name)"
     echo ""
-    read -rp "$(echo -e "${BOLD}Select region${NC} [1-$next_idx]: ")" REGION_IDX
-    REGION_IDX="${REGION_IDX:-1}"
-    
-    if [[ ! "$REGION_IDX" =~ ^[0-9]+$ ]] || [ "$REGION_IDX" -lt 1 ] || [ "$REGION_IDX" -gt $next_idx ]; then
-      print_error "Invalid region selection. Please try again."
-      continue
-    fi
-    
-    # Check if user selected "more"
-    if [ "$REGION_IDX" -eq $next_idx ]; then
-      echo ""
-      echo -e "${BOLD}🌍 More Available Regions:${NC}"
+  else
+    # Multiple or no regions available
+    while [ -z "${SELECTED_REGION}" ]; do
+      i=0  # Reset counter at start of each loop iteration
       echo ""
       
-      # Show SUGGESTED_REGIONS first (for quick access)
+      # Show available suggested regions only
       if [ ${#FILTERED_SUGGESTED[@]} -gt 0 ]; then
-        echo -e "${GREEN}✓ Suggested (quick access):${NC}"
-        for i_idx in "${!FILTERED_SUGGESTED[@]}"; do
-          r="${FILTERED_SUGGESTED[$i_idx]}"
+        echo -e "${BOLD}🌍 Available Suggested Regions:${NC}"
+        echo ""
+        i=1
+        for r in "${FILTERED_SUGGESTED[@]}"; do
           region_name="$(get_region_name "$r")"
-          printf "  %2d ✓ %s (%s)\n" "$((i_idx + 1))" "$r" "$region_name"
+          printf "  ${BOLD}%2d${NC} ${GREEN}✓${NC} %s (%s)\n" "$i" "$r" "$region_name"
+          ((i++))
         done
+        echo ""
+      else
+        echo -e "${YELLOW}⚠ No suggested regions available${NC}"
         echo ""
       fi
       
-      # Then, display FILTERED_MORE (available tested)
-      if [ ${#FILTERED_MORE[@]} -gt 0 ]; then
-        echo -e "${GREEN}✓ Available (tested):${NC}"
-        for i_idx in "${!FILTERED_MORE[@]}"; do
-          r="${FILTERED_MORE[$i_idx]}"
-          region_name="$(get_region_name "$r")"
-          printf "  %2d ✓ %s (%s)\n" "$((${#FILTERED_SUGGESTED[@]} + i_idx + 1))" "$r" "$region_name"
-        done
-        echo ""
-      fi
-      
-      # Then, display untested regions from MORE_REGIONS
-      echo -e "${CYAN}? Untested regions (may be available):${NC}"
-      untested_idx=$((${#FILTERED_SUGGESTED[@]} + ${#FILTERED_MORE[@]}))
-      
-      untested_count=0
-      for r in "${MORE_REGIONS[@]}"; do
-        if ! echo "$AVAILABLE_REGIONS" | grep -xq "$r"; then
-          untested_count=$((untested_count + 1))
-          printf "  %2d ? %s\n" "$((untested_idx + untested_count))" "$r"
-        fi
-      done
-      
-      if [ $untested_count -eq 0 ] && [ ${#FILTERED_MORE[@]} -eq 0 ] && [ ${#FILTERED_SUGGESTED[@]} -eq 0 ]; then
-        print_error "❌ No additional regions available"
-        continue
-      fi
-      
+      # Show "more regions" option
+      next_idx=$((i))
+      printf "  ${BOLD}%2d${NC} ${CYAN}📋 Show more regions${NC}\n" "$next_idx"
       echo ""
-      max_more_idx=$((${#FILTERED_SUGGESTED[@]} + ${#FILTERED_MORE[@]} + untested_count))
-      read -rp "$(echo -e "${BOLD}Select region${NC} [1-$max_more_idx] (default: 1): ")" MORE_REGION_IDX
-      MORE_REGION_IDX="${MORE_REGION_IDX:-1}"
+      read -rp "$(echo -e "${BOLD}Select region${NC} [1-$next_idx]: ")" REGION_IDX
+      REGION_IDX="${REGION_IDX:-1}"
       
-      if [[ ! "$MORE_REGION_IDX" =~ ^[0-9]+$ ]] || [ "$MORE_REGION_IDX" -lt 1 ] || [ "$MORE_REGION_IDX" -gt $max_more_idx ]; then
+      if [[ ! "$REGION_IDX" =~ ^[0-9]+$ ]] || [ "$REGION_IDX" -lt 1 ] || [ "$REGION_IDX" -gt $next_idx ]; then
         print_error "Invalid region selection. Please try again."
         continue
       fi
       
-      # Get the selected region
-      if [ "$MORE_REGION_IDX" -le ${#FILTERED_SUGGESTED[@]} ]; then
-        # Selected from FILTERED_SUGGESTED
-        SELECTED_REGION="${FILTERED_SUGGESTED[$((MORE_REGION_IDX - 1))]}"
-      elif [ "$MORE_REGION_IDX" -le $((${#FILTERED_SUGGESTED[@]} + ${#FILTERED_MORE[@]})) ]; then
-        # Selected from FILTERED_MORE
-        SELECTED_REGION="${FILTERED_MORE[$((MORE_REGION_IDX - ${#FILTERED_SUGGESTED[@]} - 1))]}"
-      else
-        # Selected from untested regions
-        selected_untested_idx=$((MORE_REGION_IDX - ${#FILTERED_SUGGESTED[@]} - ${#FILTERED_MORE[@]} - 1))
+      # Check if user selected "more"
+      if [ "$REGION_IDX" -eq $next_idx ]; then
+        echo ""
+        echo -e "${BOLD}🌍 More Available Regions:${NC}"
+        echo ""
+        
+        # Show SUGGESTED_REGIONS first (for quick access)
+        if [ ${#FILTERED_SUGGESTED[@]} -gt 0 ]; then
+          echo -e "${GREEN}✓ Suggested (quick access):${NC}"
+          for i_idx in "${!FILTERED_SUGGESTED[@]}"; do
+            r="${FILTERED_SUGGESTED[$i_idx]}"
+            region_name="$(get_region_name "$r")"
+            printf "  %2d ✓ %s (%s)\n" "$((i_idx + 1))" "$r" "$region_name"
+          done
+          echo ""
+        fi
+        
+        # Then, display FILTERED_MORE (available tested)
+        if [ ${#FILTERED_MORE[@]} -gt 0 ]; then
+          echo -e "${GREEN}✓ Available (tested):${NC}"
+          for i_idx in "${!FILTERED_MORE[@]}"; do
+            r="${FILTERED_MORE[$i_idx]}"
+            region_name="$(get_region_name "$r")"
+            printf "  %2d ✓ %s (%s)\n" "$((${#FILTERED_SUGGESTED[@]} + i_idx + 1))" "$r" "$region_name"
+          done
+          echo ""
+        fi
+        
+        # Then, display untested regions from MORE_REGIONS
+        echo -e "${CYAN}? Untested regions (may be available):${NC}"
+        untested_idx=$((${#FILTERED_SUGGESTED[@]} + ${#FILTERED_MORE[@]}))
+        
         untested_count=0
         for r in "${MORE_REGIONS[@]}"; do
           if ! echo "$AVAILABLE_REGIONS" | grep -xq "$r"; then
-            if [ $untested_count -eq $selected_untested_idx ]; then
-              SELECTED_REGION="$r"
-              break
-            fi
-            ((untested_count++))
+            untested_count=$((untested_count + 1))
+            printf "  %2d ? %s\n" "$((untested_idx + untested_count))" "$r"
           fi
         done
-      fi
-    else
-      # Selected from suggested regions
-      if [ $REGION_IDX -le ${#FILTERED_SUGGESTED[@]} ]; then
-        SELECTED_REGION="${FILTERED_SUGGESTED[$((REGION_IDX-1))]}"
+        
+        if [ $untested_count -eq 0 ] && [ ${#FILTERED_MORE[@]} -eq 0 ] && [ ${#FILTERED_SUGGESTED[@]} -eq 0 ]; then
+          print_error "❌ No additional regions available"
+          continue
+        fi
+        
+        echo ""
+        max_more_idx=$((${#FILTERED_SUGGESTED[@]} + ${#FILTERED_MORE[@]} + untested_count))
+        read -rp "$(echo -e "${BOLD}Select region${NC} [1-$max_more_idx] (default: 1): ")" MORE_REGION_IDX
+        MORE_REGION_IDX="${MORE_REGION_IDX:-1}"
+        
+        if [[ ! "$MORE_REGION_IDX" =~ ^[0-9]+$ ]] || [ "$MORE_REGION_IDX" -lt 1 ] || [ "$MORE_REGION_IDX" -gt $max_more_idx ]; then
+          print_error "Invalid region selection. Please try again."
+          continue
+        fi
+        
+        # Get the selected region
+        if [ "$MORE_REGION_IDX" -le ${#FILTERED_SUGGESTED[@]} ]; then
+          # Selected from FILTERED_SUGGESTED
+          SELECTED_REGION="${FILTERED_SUGGESTED[$((MORE_REGION_IDX - 1))]}"
+        elif [ "$MORE_REGION_IDX" -le $((${#FILTERED_SUGGESTED[@]} + ${#FILTERED_MORE[@]})) ]; then
+          # Selected from FILTERED_MORE
+          SELECTED_REGION="${FILTERED_MORE[$((MORE_REGION_IDX - ${#FILTERED_SUGGESTED[@]} - 1))]}"
+        else
+          # Selected from untested regions
+          selected_untested_idx=$((MORE_REGION_IDX - ${#FILTERED_SUGGESTED[@]} - ${#FILTERED_MORE[@]} - 1))
+          untested_count=0
+          for r in "${MORE_REGIONS[@]}"; do
+            if ! echo "$AVAILABLE_REGIONS" | grep -xq "$r"; then
+              if [ $untested_count -eq $selected_untested_idx ]; then
+                SELECTED_REGION="$r"
+                break
+              fi
+              ((untested_count++))
+            fi
+          done
+        fi
       else
-        print_error "Invalid region selection."
-        continue
+        # Selected from suggested regions
+        if [ $REGION_IDX -le ${#FILTERED_SUGGESTED[@]} ]; then
+          SELECTED_REGION="${FILTERED_SUGGESTED[$((REGION_IDX-1))]}"
+        else
+          print_error "Invalid region selection."
+          continue
+        fi
       fi
-    fi
-  done
+    done
+  fi
   
   REGION="$SELECTED_REGION"
   # set custom identifier to region name with country flag
