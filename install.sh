@@ -592,9 +592,6 @@ send_telegram() {
     
     msg+="<b>Date (UTC+1):</b> ${ts_plus1}
     "
-    msg+="<b>Date 6 Hours later:</b> ${ts_plus7}
-   
-    "
     msg+="<b>Service:</b> ${SERVICE}
     "
     msg+="<b>Protocol:</b> ${PROTO^^}
