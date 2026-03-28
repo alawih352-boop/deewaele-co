@@ -522,18 +522,18 @@ declare -A REGION_NAMES=(
   [northamerica-northeast2]="Canada🇨🇦_Toronto"
   [southamerica-east1]="Brazil🇧🇷"
   [europe-north1]="Finland🇫🇮"
-  [europe-north2]="Denmark🇩🇰✓"   
+  [europe-north2]="Sweden🇸🇪✓"   
   [europe-central2]="Poland🇵🇱✓"
   [europe-southwest1]="Spain🇪🇸"
   [europe-west1]="Belgium🇧🇪✓"
   [europe-west2]="United_Kingdom🇬🇧"
-  [europe-west3]="Germany🇩🇪_Frankfurt✓"    
+  [europe-west3]="Germany🇩🇪✓"    
   [europe-west4]="Netherlands🇳🇱✓" 
   [europe-west6]="Switzerland🇨🇭"
-  [europe-west8]="Italy🇮🇹"
+  [europe-west8]="Italy🇮🇹(Milan)"
   [europe-west9]="France🇫🇷"
-  [europe-west10]="Germany🇩🇪_Berlin✓"
-  [europe-west12]="Austria🇦🇹✓"
+  [europe-west10]="Germany🇩🇪✓"
+  [europe-west12]="Italy🇮🇹✓"
   [asia-east1]="Taiwan🇹🇼" 
   [asia-east2]="Hong_Kong🇭🇰"
   [asia-northeast1]="Japan🇯🇵_Tokyo"
@@ -1455,7 +1455,7 @@ QUERY_PARAMS="${QUERY_PARAMS}&host=${HOST}"
 # Build fragment with custom ID
 LINK_FRAGMENT="xray"
 if [ -n "${CUSTOM_ID}" ]; then
-  LINK_FRAGMENT="(${CUSTOM_ID})"
+  LINK_FRAGMENT="${CUSTOM_ID}"
 fi
 
 # -------- Generate Protocol Links --------
