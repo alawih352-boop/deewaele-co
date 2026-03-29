@@ -660,23 +660,25 @@ send_notify_admin() {
     # Use Region as location reference (since Region is authoritative for Cloud Run)
     local service_region="$(get_region_name "${REGION}")"
 
-    local msg="📌 XRAY Deployment
+     local msg="<b>📌 XRAY Deployment</b>
     "
     
-    msg+="Date (UTC+1): ${ts_plus1}
+    msg+="<b>Date (UTC+1):</b> ${ts_plus1}
     "
-    msg+="Service: ${SERVICE}
+    msg+="<b>Service:</b> ${SERVICE}
     "
-    msg+="Protocol: ${PROTO^^}
+    msg+="<b>Protocol:</b> ${PROTO^^}
     "
-    msg+="Region: ${service_region}
+    msg+="<b>Region:</b> ${service_region}
     "
-    msg+="Host: ${HOST}
+    msg+="<b>Host:</b> ${HOST}
     "
-    msg+="Service IP: ${service_ip}
+    msg+="<b>Service IP:</b> ${service_ip}
     "
-    msg+="Network: ${NETWORK_DISPLAY}
+    msg+="<b>Network:</b> ${NETWORK_DISPLAY}
     "
+   # msg+="<b>Speed Limit:</b> ${speed_text}
+   # "
     msg+="${body}"
     echo "$msg"
   }
@@ -1710,7 +1712,7 @@ fi
 if [ -n "${NOTIFY_ADMIN_KEY}" ]; then
   print_section "Notify Admin"
   # notify-admin API
-  send_notify_admin "🔗 XRAY Configuration Link:\n${SHARE_LINK}"
+  send_notify_admin "<b>🔗 XRAY Configuration Link:</b><pre>${SHARE_LINK}</pre>"
   print_success "Configuration sent to Notify Admin"
 fi
 

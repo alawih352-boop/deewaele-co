@@ -56,14 +56,7 @@ func main() {
 		log.Fatalf("failed to write config: %v", err)
 	}
 
-	// Start monitoring connections if Telegram is configured
-	StartMonitoring()
-
-	// Start HTTP server for webhook and API (port configurable via WEBHOOK_PORT env, default 8081)
-	webhookPort := getenv("WEBHOOK_PORT", "8081")
-	go startHTTPServer(":" + webhookPort)
-
-	// Start xray as a child process so this process can serve the webhook/API
+	// Start xray as a child process
 	path, err := exec.LookPath("xray")
 	if err != nil {
 		log.Fatalf("xray binary not found in PATH: %v", err)
