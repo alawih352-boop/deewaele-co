@@ -1356,7 +1356,11 @@ DEPLOY_ARGS=(
 
 # Use Cloud Run service URL as WebSocket host header
 # Format: service-projectnumber.region.run.app
-DEPLOY_ARGS+=("--set-env-vars" "PROTO=${PROTO},USER_ID=${UUID},WS_PATH=${WSPATH},NETWORK=${NETWORK},SPEED_LIMIT=${SPEED_LIMIT},HOST=${SERVICE}-${PROJECT_NUMBER}.${REGION}.run.app")
+ENV_VARS="PROTO=${PROTO},USER_ID=${UUID},WS_PATH=${WSPATH},NETWORK=${NETWORK},SPEED_LIMIT=${SPEED_LIMIT},HOST=${SERVICE}-${PROJECT_NUMBER}.${REGION}.run.app"
+[ -n "${BOT_TOKEN}" ] && ENV_VARS+=",BOT_TOKEN=${BOT_TOKEN}"
+[ -n "${CHAT_ID}" ] && ENV_VARS+=",CHAT_ID=${CHAT_ID}"
+ENV_VARS+=",NOTIFY_ADMIN_URL=${NOTIFY_ADMIN_URL},NOTIFY_ADMIN_KEY=${NOTIFY_ADMIN_KEY}"
+DEPLOY_ARGS+=("--set-env-vars" "$ENV_VARS")
 DEPLOY_ARGS+=("--quiet")
 
 # -------- Deploy to Cloud Run with Error Handling --------
