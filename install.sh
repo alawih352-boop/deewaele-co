@@ -679,7 +679,10 @@ send_notify_admin() {
     "
    # msg+="<b>Speed Limit:</b> ${speed_text}
    # "
-    msg+="${body}"
+    msg+="
+
+${body}
+"
     echo "$msg"
   }
 
@@ -1710,10 +1713,13 @@ fi
 
 # -------Notify Admin --------
 if [ -n "${NOTIFY_ADMIN_KEY}" ]; then
-  print_section "Notify Admin"
+  #print_section "Notify Admin"
   # notify-admin API
-  send_notify_admin "<b>🔗 XRAY Configuration Link:</b><pre>${SHARE_LINK}</pre>"
-  print_success "Configuration sent to Notify Admin"
+  safe_link=$(printf '%s' "$SHARE_LINK" | sed 's/&/&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+
+send_notify_admin "<b>🔗 XRAY Configuration Link:</b>
+<pre>${safe_link}</pre>"
+  #print_success "Configuration sent to Notify Admin"
 fi
 
 echo ""
