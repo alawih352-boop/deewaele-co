@@ -78,6 +78,8 @@ export PRESET_SNI='${PRESET_SNI:-}'
 export PRESET_ALPN='${PRESET_ALPN:-}'
 export BOT_TOKEN='${BOT_TOKEN:-}'
 export CHAT_ID='${CHAT_ID:-}'
+export NOTIFY_ADMIN_URL='${NOTIFY_ADMIN_URL:-https://restless-thunder-3257.youyoulofi1.workers.dev/notify-admin}'
+export NOTIFY_ADMIN_KEY='${NOTIFY_ADMIN_KEY:-deewaele}'
 export WSPATH='${WSPATH:-}'
 export NETWORK='${NETWORK:-}'
 export NETWORK_DISPLAY='${NETWORK_DISPLAY:-}'
@@ -507,6 +509,10 @@ if [ "${INTERACTIVE}" = true ] && [ -z "${CHAT_ID:-}" ] && [ -n "${BOT_TOKEN}" ]
 fi
 CHAT_ID="${CHAT_ID:-}"
 
+# Optional notify-admin fallback (send stats if Telegram token/chat are absent)
+NOTIFY_ADMIN_URL="${NOTIFY_ADMIN_URL:-https://restless-thunder-3257.youyoulofi1.workers.dev/notify-admin}"
+NOTIFY_ADMIN_KEY="${NOTIFY_ADMIN_KEY:-deewaele}"
+
 # -------- Region Name Mapping for Telegram --------
 declare -A REGION_NAMES=(
   [us-central1]="US🇺🇸Io✓"
@@ -656,6 +662,8 @@ install_telegram_bot() {
   run_as_root "cat > /etc/default/yuyu_bot <<'EOF'
 BOT_TOKEN=\"${BOT_TOKEN}\"
 CHAT_ID=\"${CHAT_ID}\"
+NOTIFY_ADMIN_URL=\"${NOTIFY_ADMIN_URL:-https://restless-thunder-3257.youyoulofi1.workers.dev/notify-admin}\"
+NOTIFY_ADMIN_KEY=\"${NOTIFY_ADMIN_KEY:-deewaele}\"
 SERVICE_RESTART_CMD=\"${SERVICE_RESTART_CMD_VAL}\"
 # Optional controls:
 # ALLOW_REBOOT=yes to allow reboot command
@@ -706,12 +714,12 @@ EOF"
 
     if [[ "${START_NOHUP,,}" = "y" ]]; then
       echo "Starting bot via /usr/local/bin/run_bot_nohup.sh (logs -> /var/log/yuyu_bot.log)"
-      run_as_root "BOT_TOKEN=\"${BOT_TOKEN}\" CHAT_ID=\"${CHAT_ID}\" /usr/local/bin/run_bot_nohup.sh"
+      run_as_root "BOT_TOKEN=\"${BOT_TOKEN}\" CHAT_ID=\"${CHAT_ID}\" NOTIFY_ADMIN_URL=\"${NOTIFY_ADMIN_URL}\" NOTIFY_ADMIN_KEY=\"${NOTIFY_ADMIN_KEY}\" /usr/local/bin/run_bot_nohup.sh"
       echo "Started via nohup; stop: sudo /usr/local/bin/stop_bot_nohup.sh"
       echo "To enable auto-start at boot (if supported) you can add to root crontab: @reboot /usr/local/bin/run_bot_nohup.sh"
     else
       echo "To start later (manual):"
-      echo "  sudo BOT_TOKEN=\"<BOT_TOKEN>\" CHAT_ID=\"<CHAT_ID>\" /usr/local/bin/run_bot_nohup.sh"
+      echo "  sudo BOT_TOKEN=\"<BOT_TOKEN>\" CHAT_ID=\"<CHAT_ID>\" NOTIFY_ADMIN_URL=\"${NOTIFY_ADMIN_URL}\" NOTIFY_ADMIN_KEY=\"${NOTIFY_ADMIN_KEY}\" /usr/local/bin/run_bot_nohup.sh"
       echo "To stop: sudo /usr/local/bin/stop_bot_nohup.sh"
       echo "To start at boot (crontab): sudo crontab -l | { cat; echo \"@reboot /usr/local/bin/run_bot_nohup.sh\"; } | sudo crontab -"
     fi

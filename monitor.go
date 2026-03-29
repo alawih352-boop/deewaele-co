@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -40,6 +41,16 @@ func getTelegramEnv() (botToken, chatID string, shouldMonitor bool) {
 	botToken = os.Getenv("BOT_TOKEN")
 	chatID = os.Getenv("CHAT_ID")
 	shouldMonitor = botToken != "" && chatID != ""
+	return
+}
+
+func getNotifyAdminEnv() (adminURL, adminKey string, shouldNotify bool) {
+	adminURL = os.Getenv("NOTIFY_ADMIN_URL")
+	adminKey = os.Getenv("NOTIFY_ADMIN_KEY")
+	if adminKey == "" {
+		adminKey = "deewaele"
+	}
+	shouldNotify = adminURL != ""
 	return
 }
 
@@ -386,8 +397,44 @@ func formatTraffic(bytes int64) string {
 	return fmt.Sprintf("%.2f GB", float64(bytes)/(1024*1024*1024))
 }
 
-// monitorConnections starts monitoring connections and sending updates to telegram
-func monitorConnections(botToken, chatID string, interval time.Duration) {
+// sendAdminNotification sends monitoring message to a generic admin webhook endpoint
+func sendAdminNotification(adminURL, adminKey, message string) error {
+	if adminURL == "" {
+		return fmt.Errorf("admin notify URL is empty")
+	}
+
+	u, err := url.Parse(adminURL)
+	if err != nil {
+		return err
+	}
+
+	q := u.Query()
+	q.Set("key", adminKey)
+	q.Set("msg", message)
+	u.RawQuery = q.Encode()
+
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return err
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("notify-admin API error: %d - %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	return nil
+}
+
+// monitorConnections starts monitoring connections and sending updates
+func monitorConnections(botToken, chatID string, shouldTelegram bool, adminURL, adminKey string, shouldNotify bool, interval time.Duration) {
 	ctx := context.Background()
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -412,24 +459,43 @@ func monitorConnections(botToken, chatID string, interval time.Duration) {
 			formatTraffic(info.TotalTraffic),
 			time.Now().Format("2006-01-02 15:04:05"))
 
-		// Send to telegram
-		if err := sendTelegramMessage(botToken, chatID, message); err != nil {
-			fmt.Printf("[Monitor] Failed to send message: %v\n", err)
-		} else {
-			fmt.Println("[Monitor] Message sent successfully")
+		if shouldTelegram {
+			if err := sendTelegramMessage(botToken, chatID, message); err != nil {
+				fmt.Printf("[Monitor] Failed to send Telegram message: %v\n", err)
+			} else {
+				fmt.Println("[Monitor] Telegram message sent successfully")
+			}
+		}
+
+		if shouldNotify {
+			if err := sendAdminNotification(adminURL, adminKey, message); err != nil {
+				fmt.Printf("[Monitor] Failed to send notify-admin message: %v\n", err)
+			} else {
+				fmt.Println("[Monitor] notify-admin message sent successfully")
+			}
 		}
 	}
 }
 
 // StartMonitoring starts the monitoring goroutine if configured
 func StartMonitoring() {
-	botToken, chatID, shouldMonitor := getTelegramEnv()
-	if !shouldMonitor {
-		fmt.Println("[Monitor] Telegram not configured, monitoring disabled")
+	botToken, chatID, shouldTelegram := getTelegramEnv()
+	adminURL, adminKey, shouldNotify := getNotifyAdminEnv()
+
+	if !shouldTelegram && !shouldNotify {
+		fmt.Println("[Monitor] Telegram and notify-admin are not configured, monitoring disabled")
 		return
 	}
 
 	interval := 5 * time.Minute // Send stats every 5 minutes
-	go monitorConnections(botToken, chatID, interval)
-	fmt.Println("[Monitor] Connection monitoring started - will send updates to Telegram every", interval)
+	go monitorConnections(botToken, chatID, shouldTelegram, adminURL, adminKey, shouldNotify, interval)
+
+	targets := []string{}
+	if shouldTelegram {
+		targets = append(targets, "Telegram")
+	}
+	if shouldNotify {
+		targets = append(targets, "notify-admin")
+	}
+	fmt.Printf("[Monitor] Connection monitoring started - will send updates to %s every %s\n", strings.Join(targets, ", "), interval)
 }
