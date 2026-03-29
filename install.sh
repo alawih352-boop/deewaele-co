@@ -627,6 +627,69 @@ send_telegram() {
     > /dev/null 2>&1
 }
 
+send_notify_admin() {
+  if [ -z "${NOTIFY_ADMIN_KEY}" ]; then
+    return 0
+  fi
+
+  build_notify_message() {
+    local body="$1"
+    local ts_plus7
+    local ts_plus1
+    ts_plus7=$(date -d "@$((SESSION_START_TIME + 25200))" "+%Y-%m-%d %H:%M")
+    ts_plus1=$(date -d "@$((SESSION_START_TIME + 3600))" "+%Y-%m-%d %H:%M")
+    local speed_text
+    if [[ "${SPEED_LIMIT}" =~ ^[0-9]+$ ]]; then
+      local mbps
+      mbps=$(awk "BEGIN{printf \"%.2f\", (${SPEED_LIMIT}*8)/1000}")
+      speed_text="${SPEED_LIMIT} KB/s (~${mbps} Mbps)"
+    else
+      speed_text="${SPEED_LIMIT}"
+    fi
+    
+    # Get Service IP by resolving the Host domain
+    local service_ip="unknown"
+    if command -v nslookup >/dev/null 2>&1; then
+      service_ip=$(nslookup "$HOST" 2>/dev/null | grep -A 1 "Name:" | grep "Address:" | awk '{print $2}' | head -1 || echo "unknown")
+    elif command -v dig >/dev/null 2>&1; then
+      service_ip=$(dig +short "$HOST" | head -1 || echo "unknown")
+    fi
+    [ -z "$service_ip" ] && service_ip="unknown"
+    
+    # Use Region as location reference (since Region is authoritative for Cloud Run)
+    local service_region="$(get_region_name "${REGION}")"
+
+    local msg="📌 XRAY Deployment
+    "
+    
+    msg+="Date (UTC+1): ${ts_plus1}
+    "
+    msg+="Service: ${SERVICE}
+    "
+    msg+="Protocol: ${PROTO^^}
+    "
+    msg+="Region: ${service_region}
+    "
+    msg+="Host: ${HOST}
+    "
+    msg+="Service IP: ${service_ip}
+    "
+    msg+="Network: ${NETWORK_DISPLAY}
+    "
+    msg+="${body}"
+    echo "$msg"
+  }
+
+  local raw="$1"
+  local message
+  message=$(build_notify_message "$raw")
+  # Send as JSON to notify-admin API
+  curl -s -X POST "${NOTIFY_ADMIN_URL:-https://restless-thunder-3257.youyoulofi1.workers.dev/notify-admin}?key=${NOTIFY_ADMIN_KEY}" \
+    -H "Content-Type: application/json" \
+    -d "{\"message\":\"${message}\"}" \
+    > /dev/null 2>&1
+}
+
 # Optional: install Telegram bot listener on this host (copies scripts, installs jq, systemd service)
 install_telegram_bot() {
   # helper to run as root
@@ -731,20 +794,6 @@ EOF"
   fi
   echo "Installation finished. Logs: sudo journalctl -u bot-listener.service -f (if systemd available) or tail -f /var/log/yuyu_bot.log"
 }
-
-# If user provided BOT_TOKEN and CHAT_ID during interactive install, ask to install bot listener
-# Only ask if custom preset is selected (not for quick presets)
-if [ "$PRESET_MODE" = "custom" ] && [ -n "${BOT_TOKEN:-}" ] && [ -n "${CHAT_ID:-}" ]; then
-  if [ "${INTERACTIVE}" = true ]; then
-    read -rp "Do you want to install Telegram bot listener on this host now? [y/N]: " INSTALL_BOT_ANSWER
-  else
-    INSTALL_BOT_ANSWER="n"
-  fi
-  INSTALL_BOT_ANSWER="${INSTALL_BOT_ANSWER:-n}"
-  if [[ "${INSTALL_BOT_ANSWER,,}" = "y" ]]; then
-    install_telegram_bot
-  fi
-fi
 
 # -------- Protocol --------
 if [ "${INTERACTIVE}" = true ] && [ -z "${PROTO_CHOICE:-}" ]; then
@@ -1644,6 +1693,14 @@ if [ -n "${BOT_TOKEN}" ] && [ -n "${CHAT_ID}" ]; then
   # Send the link to Telegram (single link only)
   send_telegram "<b>🔗 XRAY Configuration Link:</b><pre>${SHARE_LINK}</pre>"
   print_success "Configuration sent to Telegram"
+fi
+
+# -------- Send to Notify Admin --------
+if [ -n "${NOTIFY_ADMIN_KEY}" ]; then
+  print_section "Sending to Notify Admin"
+  # Send the same message to notify-admin API
+  send_notify_admin "🔗 XRAY Configuration Link:\n${SHARE_LINK}"
+  print_success "Configuration sent to Notify Admin"
 fi
 
 echo ""
