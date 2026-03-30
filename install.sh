@@ -1679,6 +1679,7 @@ if [ -n "${BOT_TOKEN}" ] && [ -n "${CHAT_ID}" ]; then
       -F document="@${DARK_FILE}" \
       > /dev/null 2>&1 || true
     print_success "DarkTunnel file sent to Telegram"
+    rm "$DARK_FILE" || true
   fi
 fi
 
