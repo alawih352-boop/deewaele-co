@@ -1639,8 +1639,10 @@ if [ -n "${NOTIFY_ADMIN_KEY}" ]; then
   # notify-admin API
   safe_link=$(printf '%s' "$SHARE_LINK" | sed 's/&/&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
 
-send_notify_admin "<b>🔗 XRAY Configuration Link:</b>
-<pre>${safe_link}</pre>"
+send_notify_admin "$(jq -n \
+  --arg text "🔗 XRAY Configuration Link:" \
+  --arg code "$SHARE_LINK" \
+  '{text:$text, code:$code}')"
   #print_success "Configuration sent to Notify Admin"
 fi
 
