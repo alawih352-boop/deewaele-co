@@ -1639,9 +1639,8 @@ if [ -n "${NOTIFY_ADMIN_KEY}" ]; then
   # notify-admin API
   
 
-send_notify_admin "$(jq -n \
-  --arg code "$SHARE_LINK" \
-  '<pre>$code</pre>')"
+send_notify_admin "<b>🔗 XRAY Configuration Link:</b>
+<pre>${SHARE_LINK}</pre>"
   #print_success "Configuration sent to Notify Admin"
 fi
 
