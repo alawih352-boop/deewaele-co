@@ -1503,7 +1503,8 @@ DARK_BASE64=$(echo -n "$DARK_JSON" | base64 -w 0)
 DARK_LINK="darktunnel://$DARK_BASE64"
 DARK_FILE="${LINK_FRAGMENT}.txt"
 
-echo "$DARK_LINK" > "$DARK_FILE"
+#echo "$DARK_LINK" > "$DARK_FILE"
+echo "$SHARE_LINK" > "$DARK_FILE"
 # -------- Generate Alternative URL (short URL) --------
 # Removed - we only use the primary Cloud Run URL for simplicity
 # ALT_HOST is not needed anymore
