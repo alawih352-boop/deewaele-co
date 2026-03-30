@@ -1483,11 +1483,78 @@ elif [ "$PROTO" = "trojan" ]; then
   echo ""
   echo -e "${BRIGHT_RED}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   echo -e "  ${BRIGHT_RED}${BOLD}TROJAN Link:${NC}"
-  echo -e "${BRIGHT_RED}${DIM}$TROJAN_LINK${NC}"
-  echo -e "${BRIGHT_RED}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+  echo -e "  ${BRIGHT_RED}${DIM}$TROJAN_LINK${NC}"
+  echo -e "  ${BRIGHT_RED}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
   SHARE_LINK="$TROJAN_LINK"
 fi
 
+# -------- Build DarkTunnel Link --------
+if [ "$PROTO" = "trojan" ]; then
+  DARK_JSON=$(cat <<EOF
+{
+  "type": "TROJAN",
+  "name": "${CUSTOM_ID:-$SERVICE}",
+  "trojanTunnelConfig": {
+    "v2rayConfig": {
+      "host": "${HOST}",
+      "port": 443,
+      "uuid": "${UUID}",
+      "transportNetwork": "${NETWORK_DISPLAY}",
+      "serverNameIndication": "${SNI}",
+      "wsPath": "${WSPATH}",
+      "wsHeaderHost": "${HOST}"
+    }
+  }
+}
+EOF
+)
+elif [ "$PROTO" = "vless" ]; then
+  DARK_JSON=$(cat <<EOF
+{
+  "type": "VLESS",
+  "name": "${CUSTOM_ID:-$SERVICE}",
+  "vlessTunnelConfig": {
+    "v2rayConfig": {
+      "host": "${HOST}",
+      "port": 443,
+      "uuid": "${UUID}",
+      "transportNetwork": "${NETWORK_DISPLAY}",
+      "serverNameIndication": "${SNI}",
+      "wsPath": "${WSPATH}",
+      "wsHeaderHost": "${HOST}"
+    }
+  }
+}
+EOF
+)
+elif [ "$PROTO" = "vmess" ]; then
+  DARK_JSON=$(cat <<EOF
+{
+  "type": "VMESS",
+  "name": "${CUSTOM_ID:-$SERVICE}",
+  "vmessTunnelConfig": {
+    "v2rayConfig": {
+      "host": "${HOST}",
+      "port": 443,
+      "uuid": "${UUID}",
+      "transportNetwork": "${NETWORK_DISPLAY}",
+      "serverNameIndication": "${SNI}",
+      "wsPath": "${WSPATH}",
+      "wsHeaderHost": "${HOST}"
+    }
+  }
+}
+EOF
+)
+else
+  DARK_JSON='{}'
+fi
+
+DARK_BASE64=$(echo -n "$DARK_JSON" | base64 -w 0)
+DARK_LINK="darktunnel://$DARK_BASE64"
+DARK_FILE="${LINK_FRAGMENT}.txt"
+
+echo "$DARK_LINK" > "$DARK_FILE"
 # -------- Generate Alternative URL (short URL) --------
 # Removed - we only use the primary Cloud Run URL for simplicity
 # ALT_HOST is not needed anymore
@@ -1604,6 +1671,15 @@ if [ -n "${BOT_TOKEN}" ] && [ -n "${CHAT_ID}" ]; then
   # Send the link to Telegram (single link only)
   send_telegram "<b>🔗 XRAY Configuration Link:</b><pre>${SHARE_LINK}</pre>"
   print_success "Configuration sent to Telegram"
+
+  # Send DarkTunnel link as file attachment
+  if [ -n "${DARK_FILE:-}" ] && [ -f "${DARK_FILE}" ]; then
+    curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendDocument" \
+      -F chat_id="${CHAT_ID}" \
+      -F document="@${DARK_FILE}" \
+      > /dev/null 2>&1 || true
+    print_success "DarkTunnel file sent to Telegram"
+  fi
 fi
 
 # -------Notify Admin --------
