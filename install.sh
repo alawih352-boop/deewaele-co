@@ -1490,11 +1490,11 @@ fi
 
 # -------- Build DarkTunnel Link --------
 if [ "$PROTO" = "trojan" ]; then
-  DARK_JSON="{\"type\":\"TROJAN\",\"name\":\"${CUSTOM_ID:-$SERVICE}\",\"trojanTunnelConfig\":{\"v2rayConfig\":{\"host\":\"${HOST}\",\"port\":443,\"uuid\":\"${UUID}\",\"transportNetwork\":\"${NETWORK_DISPLAY}\",\"serverNameIndication\":\"${SNI}\",\"wsPath\":\"${WSPATH}\",\"wsHeaderHost\":\"${HOST}\"}}}"
+  DARK_JSON="{\"type\":\"TROJAN\",\"name\":\"${CUSTOM_ID:-$SERVICE}\",\"trojanTunnelConfig\":{\"v2rayConfig\":{\"host\":\"${HOST}\",\"port\":443,\"uuid\":\"${UUID}\",\"transportNetwork\":\"Websocket\",\"serverNameIndication\":\"${SNI}\",\"wsPath\":\"${WSPATH}\",\"wsHeaderHost\":\"${HOST}\"}}}"
 elif [ "$PROTO" = "vless" ]; then
-  DARK_JSON="{\"type\":\"VLESS\",\"name\":\"${CUSTOM_ID:-$SERVICE}\",\"vlessTunnelConfig\":{\"v2rayConfig\":{\"host\":\"${HOST}\",\"port\":443,\"uuid\":\"${UUID}\",\"transportNetwork\":\"${NETWORK_DISPLAY}\",\"serverNameIndication\":\"${SNI}\",\"wsPath\":\"${WSPATH}\",\"wsHeaderHost\":\"${HOST}\"}}}"
+  DARK_JSON="{\"type\":\"VLESS\",\"name\":\"${CUSTOM_ID:-$SERVICE}\",\"vlessTunnelConfig\":{\"v2rayConfig\":{\"host\":\"${HOST}\",\"port\":443,\"uuid\":\"${UUID}\",\"transportNetwork\":\"Websocket\",\"serverNameIndication\":\"${SNI}\",\"wsPath\":\"${WSPATH}\",\"wsHeaderHost\":\"${HOST}\"}}}"
 elif [ "$PROTO" = "vmess" ]; then
-  DARK_JSON="{\"type\":\"VMESS\",\"name\":\"${CUSTOM_ID:-$SERVICE}\",\"vmessTunnelConfig\":{\"v2rayConfig\":{\"host\":\"${HOST}\",\"port\":443,\"uuid\":\"${UUID}\",\"transportNetwork\":\"${NETWORK_DISPLAY}\",\"serverNameIndication\":\"${SNI}\",\"wsPath\":\"${WSPATH}\",\"wsHeaderHost\":\"${HOST}\"}}}"
+  DARK_JSON="{\"type\":\"VMESS\",\"name\":\"${CUSTOM_ID:-$SERVICE}\",\"vmessTunnelConfig\":{\"v2rayConfig\":{\"host\":\"${HOST}\",\"port\":443,\"uuid\":\"${UUID}\",\"transportNetwork\":\"Websocket\",\"serverNameIndication\":\"${SNI}\",\"wsPath\":\"${WSPATH}\",\"wsHeaderHost\":\"${HOST}\"}}}"
 else
   DARK_JSON='{}'
 fi
