@@ -1501,7 +1501,7 @@ fi
 
 DARK_BASE64=$(echo -n "$DARK_JSON" | base64 -w 0)
 DARK_LINK="darktunnel://$DARK_BASE64"
-DARK_FILE="${LINK_FRAGMENT}.txt"
+DARK_FILE="${LINK_FRAGMENT}.dark"
 
 #echo "$DARK_LINK" > "$DARK_FILE"
 echo "$SHARE_LINK" > "$DARK_FILE"
