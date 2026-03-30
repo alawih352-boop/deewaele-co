@@ -749,7 +749,7 @@ esac
 # -------- Network Type --------
 # Cloud Run supports WebSocket (ws) reliably; gRPC has compatibility issues
 NETWORK="ws"
-NETWORK_DISPLAY="WebSocket"
+NETWORK_DISPLAY="Websocket"
 
 # -------- WebSocket Path --------
 if [ "${INTERACTIVE}" = true ] && [ -z "${WSPATH:-}" ]; then
@@ -1490,62 +1490,11 @@ fi
 
 # -------- Build DarkTunnel Link --------
 if [ "$PROTO" = "trojan" ]; then
-  DARK_JSON=$(cat <<EOF
-{
-  "type": "TROJAN",
-  "name": "${CUSTOM_ID:-$SERVICE}",
-  "trojanTunnelConfig": {
-    "v2rayConfig": {
-      "host": "${HOST}",
-      "port": 443,
-      "uuid": "${UUID}",
-      "transportNetwork": "${NETWORK_DISPLAY}",
-      "serverNameIndication": "${SNI}",
-      "wsPath": "${WSPATH}",
-      "wsHeaderHost": "${HOST}"
-    }
-  }
-}
-EOF
-)
+  DARK_JSON="{\"type\":\"TROJAN\",\"name\":\"${CUSTOM_ID:-$SERVICE}\",\"trojanTunnelConfig\":{\"v2rayConfig\":{\"host\":\"${HOST}\",\"port\":443,\"uuid\":\"${UUID}\",\"transportNetwork\":\"${NETWORK_DISPLAY}\",\"serverNameIndication\":\"${SNI}\",\"wsPath\":\"${WSPATH}\",\"wsHeaderHost\":\"${HOST}\"}}}"
 elif [ "$PROTO" = "vless" ]; then
-  DARK_JSON=$(cat <<EOF
-{
-  "type": "VLESS",
-  "name": "${CUSTOM_ID:-$SERVICE}",
-  "vlessTunnelConfig": {
-    "v2rayConfig": {
-      "host": "${HOST}",
-      "port": 443,
-      "uuid": "${UUID}",
-      "transportNetwork": "${NETWORK_DISPLAY}",
-      "serverNameIndication": "${SNI}",
-      "wsPath": "${WSPATH}",
-      "wsHeaderHost": "${HOST}"
-    }
-  }
-}
-EOF
-)
+  DARK_JSON="{\"type\":\"VLESS\",\"name\":\"${CUSTOM_ID:-$SERVICE}\",\"vlessTunnelConfig\":{\"v2rayConfig\":{\"host\":\"${HOST}\",\"port\":443,\"uuid\":\"${UUID}\",\"transportNetwork\":\"${NETWORK_DISPLAY}\",\"serverNameIndication\":\"${SNI}\",\"wsPath\":\"${WSPATH}\",\"wsHeaderHost\":\"${HOST}\"}}}"
 elif [ "$PROTO" = "vmess" ]; then
-  DARK_JSON=$(cat <<EOF
-{
-  "type": "VMESS",
-  "name": "${CUSTOM_ID:-$SERVICE}",
-  "vmessTunnelConfig": {
-    "v2rayConfig": {
-      "host": "${HOST}",
-      "port": 443,
-      "uuid": "${UUID}",
-      "transportNetwork": "${NETWORK_DISPLAY}",
-      "serverNameIndication": "${SNI}",
-      "wsPath": "${WSPATH}",
-      "wsHeaderHost": "${HOST}"
-    }
-  }
-}
-EOF
-)
+  DARK_JSON="{\"type\":\"VMESS\",\"name\":\"${CUSTOM_ID:-$SERVICE}\",\"vmessTunnelConfig\":{\"v2rayConfig\":{\"host\":\"${HOST}\",\"port\":443,\"uuid\":\"${UUID}\",\"transportNetwork\":\"${NETWORK_DISPLAY}\",\"serverNameIndication\":\"${SNI}\",\"wsPath\":\"${WSPATH}\",\"wsHeaderHost\":\"${HOST}\"}}}"
 else
   DARK_JSON='{}'
 fi
