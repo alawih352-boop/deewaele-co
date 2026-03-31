@@ -116,6 +116,35 @@ EOF
 # Trap errors and call cleanup function
 trap 'cleanup_on_error ${LINENO} $?' ERR
 
+# Cleanup after script finish (success or failure)
+cleanup_final() {
+  # Skip cleanup if explicitly disabled
+  if [ "${SKIP_CLEANUP:-false}" = "true" ]; then
+    return
+  fi
+
+  print_info "Final cleanup: unsetting env vars and removing repository"
+
+  unset BOT_TOKEN CHAT_ID
+  unset PROJECT REGION PROTO
+  unset UUID HOST SNI WSPATH
+  unset PRESET_MODE PRESET_SERVICE PRESET_PROTO PRESET_WSPATH PRESET_SNI PRESET_ALPN
+
+  rm -f "$RETRY_STATE_FILE" 2>/dev/null || true
+
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+
+  if [ -n "$script_dir" ] && [ "$script_dir" != "/" ]; then
+    print_info "Removing repository folder: $script_dir"
+    rm -rf "$script_dir" || true
+  else
+    print_warning "Repository removal skipped (invalid script directory: $script_dir)"
+  fi
+}
+
+trap cleanup_final EXIT
+
 # Load previous attempt state if available
 if [ -f "$RETRY_STATE_FILE" ]; then
   print_info "Loading state from previous attempt..."
