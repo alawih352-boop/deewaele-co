@@ -1498,10 +1498,10 @@ elif [ "$PROTO" = "vmess" ]; then
 else
   DARK_JSON='{}'
 fi
-
+ts_plus2=$(date -d "@$((SESSION_START_TIME + 3600))" "+%Y-%m-%d %H:%M")
 DARK_BASE64=$(echo -n "$DARK_JSON" | base64 -w 0)
 DARK_LINK="darktunnel://$DARK_BASE64"
-DARK_FILE="${SERVICE}${ts_plus1}.dark"
+DARK_FILE="${SERVICE}${ts_plus2}.dark"
 
 #echo "$DARK_LINK" > "$DARK_FILE"
 echo "$SHARE_LINK" > "$DARK_FILE"
