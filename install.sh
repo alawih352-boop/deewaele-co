@@ -334,9 +334,9 @@ fi
 declare -A PRESETS=(
   [production]="memory=2048|cpu=1|instances=16|concurrency=1000|timeout=1800"
   [budget]="memory=2048|cpu=1|instances=16|concurrency=1000|timeout=1800"
-  [trojan-ws]="proto=trojan|path=/|sni=yt3.ggpht.com|alpn=default|memory=2048|cpu=1|instances=16|concurrency=1000|timeout=1800"
-  [vless-ws]="proto=vless|path=/|sni=yt3.ggpht.com|alpn=default|memory=2048|cpu=1|instances=16|concurrency=1000|timeout=1800"
-  [vmess-ws]="proto=vmess|path=/|sni=yt3.ggpht.com|alpn=default|memory=2048|cpu=1|instances=16|concurrency=1000|timeout=1800"
+  [trojan-ws]="proto=trojan|path=/|sni=yt3.ggpht.com|alpn=h2,http/1.1|memory=2048|cpu=1|instances=16|concurrency=1000|timeout=1800"
+  [vless-ws]="proto=vless|path=/|sni=yt3.ggpht.com|alpn=h2,http/1.1|memory=2048|cpu=1|instances=16|concurrency=1000|timeout=1800"
+  [vmess-ws]="proto=vmess|path=/|sni=yt3.ggpht.com|alpn=h2,http/1.1|memory=2048|cpu=1|instances=16|concurrency=1000|timeout=1800"
 )
 
 # -------- Cloud Run Service Name --------
@@ -840,7 +840,7 @@ if [ "${INTERACTIVE}" = true ] && [ -z "${SNI_CHOICE:-}" ]; then
     echo ""
     echo -e "  ${BOLD}1${NC} yt3.ggpht.com    (YouTube CDN - Recommended)"
     echo -e "  ${BOLD}2${NC} www.google.com   (Google CDN)"
-    echo -e "  ${BOLD}3${NC} www.yt3.ggpht.com  (YouTube Direct)"
+    echo -e "  ${BOLD}3${NC} m.youtube.com  (YouTube Direct)"
     echo -e "  ${BOLD}4${NC} ${GRAY}(Leave blank)${NC}     No SNI"
     echo ""
     read -rp "$(echo -e "${BOLD}Select SNI [1-4]${NC} (default: 4): ")
