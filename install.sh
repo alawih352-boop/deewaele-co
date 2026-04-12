@@ -710,23 +710,6 @@ send_notify_admin() {
       }')
   else
     # Fallback: Build JSON manually with Python for proper escaping
-    payload=$(python3 << 'PYEOF'
-import json, sys, os
-data = {
-    "service": os.getenv("SERVICE"),
-    "protocol": os.getenv("PROTO", "").upper(),
-    "region": os.getenv("SERVICE_REGION"),
-    "regionCode": os.getenv("REGION"),
-    "host": os.getenv("HOST"),
-    "serviceIp": os.getenv("SERVICE_IP", "unknown"),
-    "network": os.getenv("NETWORK_DISPLAY"),
-    "timestamp": os.getenv("TS_PLUS1"),
-    "wspath": os.getenv("WSPATH"),
-    "body": os.getenv("BODY")
-}
-print(json.dumps(data))
-PYEOF
-    # Set environment variables for Python script
     export SERVICE="$SERVICE"
     export PROTO="$PROTO"
     export SERVICE_REGION="$service_region"
@@ -737,9 +720,10 @@ PYEOF
     export TS_PLUS1="$ts_plus1"
     export WSPATH="$WSPATH"
     export BODY="$body"
-    
-    payload=$(python3 << 'PYEOF'
-import json, sys, os
+
+    payload=$(python3 - <<'PYEOF'
+import json, os
+
 data = {
     "service": os.getenv("SERVICE"),
     "protocol": os.getenv("PROTO", "").upper(),
@@ -750,10 +734,11 @@ data = {
     "network": os.getenv("NETWORK_DISPLAY"),
     "timestamp": os.getenv("TS_PLUS1"),
     "wspath": os.getenv("WSPATH"),
-    "body": os.getenv("BODY")
+    "body": os.getenv("BODY"),
 }
 print(json.dumps(data))
 PYEOF
+)
   fi
 
   # Send as JSON to notify-admin API
