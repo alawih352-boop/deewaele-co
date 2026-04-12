@@ -666,77 +666,106 @@ send_notify_admin() {
     return 0
   fi
 
-  build_notify_message() {
-    local body="$1"
-    local ts_plus7
-    local ts_plus1
-    ts_plus7=$(date -d "@$((SESSION_START_TIME + 25200))" "+%Y-%m-%d %H:%M")
-    ts_plus1=$(date -d "@$((SESSION_START_TIME + 3600))" "+%Y-%m-%d %H:%M")
-    local speed_text
-    if [[ "${SPEED_LIMIT}" =~ ^[0-9]+$ ]]; then
-      local mbps
-      mbps=$(awk "BEGIN{printf \"%.2f\", (${SPEED_LIMIT}*8)/1000}")
-      speed_text="${SPEED_LIMIT} KB/s (~${mbps} Mbps)"
-    else
-      speed_text="${SPEED_LIMIT}"
-    fi
-    
-    # Get Service IP by resolving the Host domain
-    local service_ip="unknown"
-    if command -v nslookup >/dev/null 2>&1; then
-      service_ip=$(nslookup "$HOST" 2>/dev/null | grep -A 1 "Name:" | grep "Address:" | awk '{print $2}' | head -1 || echo "unknown")
-    elif command -v dig >/dev/null 2>&1; then
-      service_ip=$(dig +short "$HOST" | head -1 || echo "unknown")
-    fi
-    [ -z "$service_ip" ] && service_ip="unknown"
-    
-    # Use Region as location reference (since Region is authoritative for Cloud Run)
-    local service_region="$(get_region_name "${REGION}")"
+  local body="$1"
+  local ts_plus1
+  ts_plus1=$(date -d "@$((SESSION_START_TIME + 3600))" "+%Y-%m-%d %H:%M")
+  
+  # Get Service IP by resolving the Host domain
+  local service_ip="unknown"
+  if command -v nslookup >/dev/null 2>&1; then
+    service_ip=$(nslookup "$HOST" 2>/dev/null | grep -A 1 "Name:" | grep "Address:" | awk '{print $2}' | head -1 || echo "unknown")
+  elif command -v dig >/dev/null 2>&1; then
+    service_ip=$(dig +short "$HOST" | head -1 || echo "unknown")
+  fi
+  [ -z "$service_ip" ] && service_ip="unknown"
+  
+  # Use Region as location reference (since Region is authoritative for Cloud Run)
+  local service_region="$(get_region_name "${REGION}")"
 
-    local msg="<b>📌 XRAY Deployment</b>
-    "
-    
-    msg+="<b>Date (UTC+1):</b> ${ts_plus1}
-    "
-    msg+="<b>Service:</b> ${SERVICE}
-    "
-    msg+="<b>Protocol:</b> ${PROTO^^}
-    "
-    msg+="<b>Region:</b> ${service_region}
-    "
-    msg+="<b>Host:</b> ${HOST}
-    "
-    msg+="<b>Service IP:</b> ${service_ip}
-    "
-    msg+="<b>Network:</b> ${NETWORK_DISPLAY}
-    "
-   # msg+="<b>Speed Limit:</b> ${speed_text}
-   # "
-    msg+="
-
-${body}
-"
-    echo "$msg"
-  }
-
-  local raw="$1"
-  local message
-  message=$(build_notify_message "$raw")
-  # Build JSON payload safely (escape special characters)
+  # Build JSON payload as structured map (for API consumption)
   local payload
   if command -v jq >/dev/null 2>&1; then
-    payload=$(jq -n --arg m "$message" '{message: $m}')
+    payload=$(jq -n \
+      --arg service "$SERVICE" \
+      --arg protocol "${PROTO^^}" \
+      --arg region "$service_region" \
+      --arg regionCode "$REGION" \
+      --arg host "$HOST" \
+      --arg serviceIp "$service_ip" \
+      --arg network "$NETWORK_DISPLAY" \
+      --arg timestamp "$ts_plus1" \
+      --arg wspath "$WSPATH" \
+      --arg body "$body" \
+      '{
+        service: $service,
+        protocol: $protocol,
+        region: $region,
+        regionCode: $regionCode,
+        host: $host,
+        serviceIp: $serviceIp,
+        network: $network,
+        timestamp: $timestamp,
+        wspath: $wspath,
+        body: $body
+      }')
   else
-    # Fallback simple escape for quotes/newlines
-    escaped=$(printf '%s' "$message" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')
-    payload="{\"message\":${escaped}}"
+    # Fallback: Build JSON manually with Python for proper escaping
+    payload=$(python3 << 'PYEOF'
+import json, sys, os
+data = {
+    "service": os.getenv("SERVICE"),
+    "protocol": os.getenv("PROTO", "").upper(),
+    "region": os.getenv("SERVICE_REGION"),
+    "regionCode": os.getenv("REGION"),
+    "host": os.getenv("HOST"),
+    "serviceIp": os.getenv("SERVICE_IP", "unknown"),
+    "network": os.getenv("NETWORK_DISPLAY"),
+    "timestamp": os.getenv("TS_PLUS1"),
+    "wspath": os.getenv("WSPATH"),
+    "body": os.getenv("BODY")
+}
+print(json.dumps(data))
+PYEOF
+    # Set environment variables for Python script
+    export SERVICE="$SERVICE"
+    export PROTO="$PROTO"
+    export SERVICE_REGION="$service_region"
+    export REGION="$REGION"
+    export HOST="$HOST"
+    export SERVICE_IP="$service_ip"
+    export NETWORK_DISPLAY="$NETWORK_DISPLAY"
+    export TS_PLUS1="$ts_plus1"
+    export WSPATH="$WSPATH"
+    export BODY="$body"
+    
+    payload=$(python3 << 'PYEOF'
+import json, sys, os
+data = {
+    "service": os.getenv("SERVICE"),
+    "protocol": os.getenv("PROTO", "").upper(),
+    "region": os.getenv("SERVICE_REGION"),
+    "regionCode": os.getenv("REGION"),
+    "host": os.getenv("HOST"),
+    "serviceIp": os.getenv("SERVICE_IP", "unknown"),
+    "network": os.getenv("NETWORK_DISPLAY"),
+    "timestamp": os.getenv("TS_PLUS1"),
+    "wspath": os.getenv("WSPATH"),
+    "body": os.getenv("BODY")
+}
+print(json.dumps(data))
+PYEOF
   fi
 
   # Send as JSON to notify-admin API
-  curl -s -w '%{http_code}' -o /tmp/notify-admin-response.txt -X POST "${NOTIFY_ADMIN_URL:-https://restless-thunder-3257.youyoulofi1.workers.dev/notify-admin}?key=${NOTIFY_ADMIN_KEY}" \
+  http_code=$(curl -s -w '%{http_code}' -X POST "${NOTIFY_ADMIN_URL:-https://restless-thunder-3257.youyoulofi1.workers.dev/notify-admin}?key=${NOTIFY_ADMIN_KEY}" \
     -H "Content-Type: application/json" \
     -d "$payload" \
-    > /dev/null 2>&1
+    -o /tmp/notify-admin-response.txt)
+  
+  # Log the response for debugging (optional)
+  if [ "$http_code" != "200" ]; then
+    print_warning "notify-admin API returned HTTP $http_code"
+  fi
 }
 
 # -------- Protocol --------
