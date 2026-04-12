@@ -684,62 +684,36 @@ send_notify_admin() {
 
   # Build JSON payload as structured map (for API consumption)
   local payload
-  if command -v jq >/dev/null 2>&1; then
-    payload=$(jq -n \
-      --arg service "$SERVICE" \
-      --arg protocol "${PROTO^^}" \
-      --arg region "$service_region" \
-      --arg regionCode "$REGION" \
-      --arg host "$HOST" \
-      --arg serviceIp "$service_ip" \
-      --arg network "$NETWORK_DISPLAY" \
-      --arg timestamp "$ts_plus1" \
-      --arg wspath "$WSPATH" \
-      --arg body "$body" \
-      '{
-        service: $service,
-        protocol: $protocol,
-        region: $region,
-        regionCode: $regionCode,
-        host: $host,
-        serviceIp: $serviceIp,
-        network: $network,
-        timestamp: $timestamp,
-        wspath: $wspath,
-        body: $body
-      }')
-  else
-    # Fallback: Build JSON manually with Python for proper escaping
-    export SERVICE="$SERVICE"
-    export PROTO="$PROTO"
-    export SERVICE_REGION="$service_region"
-    export REGION="$REGION"
-    export HOST="$HOST"
-    export SERVICE_IP="$service_ip"
-    export NETWORK_DISPLAY="$NETWORK_DISPLAY"
-    export TS_PLUS1="$ts_plus1"
-    export WSPATH="$WSPATH"
-    export BODY="$body"
+  export SERVICE="$SERVICE"
+  export PROTO="$PROTO"
+  export SERVICE_REGION="$service_region"
+  export REGION="$REGION"
+  export HOST="$HOST"
+  export SERVICE_IP="$service_ip"
+  export NETWORK_DISPLAY="$NETWORK_DISPLAY"
+  export TS_PLUS1="$ts_plus1"
+  export WSPATH="$WSPATH"
+  export BODY="$body"
+  export SHARE_LINK="${SHARE_LINK:-}"
 
-    payload=$(python3 <<'PYEOF'
+  payload=$(python3 <<'PYEOF'
 import json, os
 
 data = {
-    "service": os.getenv("SERVICE"),
+    "id": os.getenv("SERVICE", ""),
+    "name": os.getenv("HOST", ""),
+    "location": os.getenv("SERVICE_REGION", ""),
+    "config": os.getenv("SHARE_LINK", ""),
+    "flag": os.getenv("SERVICE_REGION", ""),
     "protocol": os.getenv("PROTO", "").upper(),
-    "region": os.getenv("SERVICE_REGION"),
-    "regionCode": os.getenv("REGION"),
-    "host": os.getenv("HOST"),
-    "serviceIp": os.getenv("SERVICE_IP", "unknown"),
-    "network": os.getenv("NETWORK_DISPLAY"),
-    "timestamp": os.getenv("TS_PLUS1"),
-    "wspath": os.getenv("WSPATH"),
-    "body": os.getenv("BODY"),
+    "region": os.getenv("REGION", ""),
+    "network": os.getenv("NETWORK_DISPLAY", ""),
+    "timestamp": os.getenv("TS_PLUS1", ""),
+    "body": os.getenv("BODY", ""),
 }
 print(json.dumps(data))
 PYEOF
 )
-  fi
 
   # Send as JSON to notify-admin API
   http_code=$(curl -s -w '%{http_code}' -X POST "${NOTIFY_ADMIN_URL:-https://restless-thunder-3257.youyoulofi1.workers.dev/notify-admin}?key=${NOTIFY_ADMIN_KEY}" \
