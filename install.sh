@@ -721,7 +721,7 @@ send_notify_admin() {
     export WSPATH="$WSPATH"
     export BODY="$body"
 
-    payload=$(python3 - <<'PYEOF'
+    payload=$(python3 <<'PYEOF'
 import json, os
 
 data = {
