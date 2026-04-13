@@ -284,7 +284,7 @@ cat > config.json <<'XRAY_CONFIG'
       }
     },
     "sniffing": {
-      "enabled": true,
+      "enabled": false,
       "destOverride": ["http", "tls"],
       "metadataOnly": false
     }

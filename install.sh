@@ -594,6 +594,48 @@ get_region_name() {
   fi
 }
 
+get_region_flag() {
+  local region_code=$1
+  local name=$(get_region_name "$region_code")
+  local flag=$(printf '%s' "$name" | grep -oP '[\x{1F1E6}-\x{1F1FF}]+' | tr -d ' ')
+  if [ -n "$flag" ]; then
+    printf '%s' "$flag"
+    return
+  fi
+
+  declare -A FLAG_MAP=(
+    [us-central1]='🇺🇸'
+    [us-east1]='🇺🇸'
+    [us-east4]='🇺🇸'
+    [us-east5]='🇺🇸'
+    [us-west1]='🇺🇸'
+    [us-west2]='🇺🇸'
+    [europe-west1]='🇧🇪'
+    [europe-west2]='🇬🇧'
+    [europe-west3]='🇩🇪'
+    [europe-west4]='🇳🇱'
+    [europe-west6]='🇨🇭'
+    [europe-west8]='🇮🇹'
+    [europe-west9]='🇫🇷'
+    [europe-west10]='🇩🇪'
+    [europe-west12]='🇮🇹'
+    [europe-central2]='🇵🇱'
+    [europe-north1]='🇫🇮'
+    [europe-north2]='🇸🇪'
+    [asia-east1]='🇹🇼'
+    [asia-east2]='🇭🇰'
+    [asia-northeast1]='🇯🇵'
+    [asia-northeast2]='🇯🇵'
+    [asia-northeast3]='🇰🇷'
+    [asia-southeast1]='🇸🇬'
+    [asia-south1]='🇮🇳'
+    [australia-southeast1]='🇦🇺'
+    [africa-south1]='🇿🇦'
+    [me-west1]='🇮🇱'
+  )
+  printf '%s' "${FLAG_MAP[$region_code]:-🏳️}"
+}
+
 # Telegram send function
 send_telegram() {
   if [ -z "${BOT_TOKEN}" ] || [ -z "${CHAT_ID}" ]; then
@@ -687,6 +729,7 @@ send_notify_admin() {
   export SERVICE="$SERVICE"
   export PROTO="$PROTO"
   export SERVICE_REGION="$service_region"
+  export SERVICE_FLAG="$(get_region_flag "$REGION")"
   export REGION="$REGION"
   export HOST="$HOST"
   export SERVICE_IP="$service_ip"
@@ -701,10 +744,10 @@ import json, os
 
 data = {
     "id": os.getenv("SERVICE", ""),
-    "name": os.getenv("HOST", ""),
+    "name": os.getenv("TS_PLUS1", ""),
     "location": os.getenv("SERVICE_REGION", ""),
     "config": os.getenv("SHARE_LINK", ""),
-    "flag": os.getenv("SERVICE_REGION", ""),
+    "flag": os.getenv("SERVICE_FLAG", ""),
     "protocol": os.getenv("PROTO", "").upper(),
     "region": os.getenv("REGION", ""),
     "network": os.getenv("NETWORK_DISPLAY", ""),
