@@ -768,11 +768,11 @@ PYEOF
      curl -s -X POST "${INGEST_URL:-https://notify-service.youyoulofi1.workers.dev/ingest}" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer ${NOTIFY_ADMIN_KEY}" \
-    -d "{
-       \"id\": \"${SERVICE}\",
-       \"ttl\": 21600,
-       \"data\": $(echo "$payload" | jq -c .)
-    }" \
+  #  -d "{
+   #    \"id\": \"${SERVICE}\",
+   #    \"ttl\": 21600,
+   #    \"data\": $(echo "$payload" | jq -c .)
+  # }" \
   -o /dev/null &
   
   # Log the response for debugging (optional)
