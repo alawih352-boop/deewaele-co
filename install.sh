@@ -143,6 +143,7 @@ cleanup_final() {
     rm -rf "$script_dir"
     exec bash
     # Ensure shell is in a valid directory after deletion
+    
   else
     print_warning "Repository removal skipped (invalid script directory: $script_dir)"
   fi
@@ -334,10 +335,10 @@ fi
 # -------- Preset Configurations --------
 declare -A PRESETS=(
   [production]="memory=2048|cpu=1|instances=16|concurrency=1000|timeout=3600"
-  [budget]="memory=2048|cpu=1|instances=16|concurrency=1000|timeout=3600"
-  [trojan-ws]="proto=trojan|path=/|sni=m.youtube.com|alpn=http/1.1|memory=2048|cpu=1|instances=16|concurrency=1000|timeout=3600"
-  [vless-ws]="proto=vless|path=/|sni=m.youtube.com|alpn=http/1.1|memory=2048|cpu=1|instances=16|concurrency=1000|timeout=3600"
-  [vmess-ws]="proto=vmess|path=/|sni=m.youtube.com|alpn=http/1.1|memory=2048|cpu=1|instances=16|concurrency=1000|timeout=3600"
+  [budget]="memory=2048|cpu=2|instances=8|concurrency=1000|timeout=3600"
+  [trojan-ws]="proto=trojan|path=/|sni=youtubei.googleapis.com|alpn=http/1.1|memory=2048|cpu=1|instances=16|concurrency=1000|timeout=3600"
+  [vless-ws]="proto=vless|path=/|sni=youtubei.googleapis.com|alpn=http/1.1|memory=2048|cpu=1|instances=16|concurrency=1000|timeout=3600"
+  [vmess-ws]="proto=vmess|path=/|sni=youtubei.googleapis.com|alpn=http/1.1|memory=2048|cpu=1|instances=16|concurrency=1000|timeout=3600"
 )
 
 # -------- Cloud Run Service Name --------
@@ -495,9 +496,9 @@ if [ "${INTERACTIVE}" = true ] && [ -z "${PRESET:-}" ] && [ $ATTEMPT_NUMBER -eq 
   print_section "Quick Start with Presets"
   echo ""
   echo -e "  ${BOLD}${BRIGHT_GREEN}1${NC} ${BRIGHT_GREEN}production${NC}       ${DIM}2048MB RAM, 1 CPU, 16 instances (High Performance)${NC}"
-  echo -e "  ${BOLD}${BRIGHT_RED}2${NC} ${BRIGHT_RED}trojan-ws${NC}          ${DIM}TROJAN Protocol, yt3.ggpht.com (Optimized)${NC}"
-  echo -e "  ${BOLD}${BRIGHT_CYAN}3${NC} ${BRIGHT_CYAN}vless-ws${NC}           ${DIM}VLESS Protocol, yt3.ggpht.com (Fast)${NC}"
-  echo -e "  ${BOLD}${BRIGHT_YELLOW}4${NC} ${BRIGHT_YELLOW}vmess-ws${NC}           ${DIM}VMESS Protocol, yt3.ggpht.com (Compatible)${NC}"
+  echo -e "  ${BOLD}${BRIGHT_RED}2${NC} ${BRIGHT_RED}trojan-ws${NC}          ${DIM}TROJAN Protocol, youtubei.googleapis.com (Optimized)${NC}"
+  echo -e "  ${BOLD}${BRIGHT_CYAN}3${NC} ${BRIGHT_CYAN}vless-ws${NC}           ${DIM}VLESS Protocol, youtubei.googleapis.com (Fast)${NC}"
+  echo -e "  ${BOLD}${BRIGHT_YELLOW}4${NC} ${BRIGHT_YELLOW}vmess-ws${NC}           ${DIM}VMESS Protocol, youtubei.googleapis.com (Compatible)${NC}"
   echo -e "  ${BOLD}${BRIGHT_MAGENTA}5${NC} ${BRIGHT_MAGENTA}custom${NC}            ${DIM}Configure everything manually${NC}"
   echo ""
   read -rp "$(echo -e "${BOLD}${BRIGHT_BLUE}Select preset [1-5]${NC} ${DIM}(default: 1)${NC}: ")" PRESET_CHOICE
@@ -768,11 +769,11 @@ PYEOF
      curl -s -X POST "${INGEST_URL:-https://notify-service.youyoulofi1.workers.dev/ingest}" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer ${NOTIFY_ADMIN_KEY}" \
-  #  -d "{
-   #    \"id\": \"${SERVICE}\",
-   #    \"ttl\": 21600,
-   #    \"data\": $(echo "$payload" | jq -c .)
-  # }" \
+    #-d "{
+    #   \"id\": \"${SERVICE}\",
+    #   \"ttl\": 21600,
+    #  \"data\": $(echo "$payload" | jq -c .)
+    #}" \
   -o /dev/null &
   
   # Log the response for debugging (optional)
@@ -1348,6 +1349,12 @@ echo ""
 [ -n "${TIMEOUT}" ] && print_success "Timeout: ${BOLD}${TIMEOUT}${NC}s" || print_info "Timeout: (Cloud Run default)"
 [ -n "${MAX_INSTANCES}" ] && print_success "Max instances: ${BOLD}${MAX_INSTANCES}${NC}" || print_info "Max instances: (Cloud Run default)"
 [ -n "${CONCURRENCY}" ] && print_success "Max concurrency: ${BOLD}${CONCURRENCY}${NC}" || print_info "Max concurrency: (Cloud Run default)"
+echo ""
+print_info "Advanced Cloud Run Settings:"
+print_success "  • Execution Environment: ${BOLD}gen2${NC} ✓"
+print_success "  • CPU Throttling: ${BOLD}Disabled${NC} ✓"
+print_success "  • Min Instances: ${BOLD}1${NC} ✓"
+print_info "  • CPU Boost: Disabled (can be enabled if needed)"
 
 # -------- Sanity checks --------
 print_section "Validation"
@@ -1379,6 +1386,11 @@ DEPLOY_ARGS=(
   "--region" "$REGION"
   "--platform" "managed"
   "--allow-unauthenticated"
+  "--execution-environment=gen2"
+  "--no-cpu-throttling"
+  "--min-instances=1"
+  "--no-cpu-boost"
+  "--session-affinity"
 )
 
 [ -n "${MEMORY}" ] && DEPLOY_ARGS+=("--memory" "${MEMORY}Mi")
